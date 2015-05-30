@@ -1,0 +1,13 @@
+This is an implementation of a joint RNN translation model, similar to the models described in the following papers:
+- http://arxiv.org/pdf/1409.3215v3.pdf
+- http://arxiv.org/pdf/1406.1078.pdf
+
+Documentation and examples coming soon.
+
+Dependencies:
+- Python 2.7.6
+- Theano 0.7.0 and associated dependencies (numpy)
+- Keras (https://github.com/fchollet/keras) - created and tested using commit c61c4ed885ed2b0f4b56b334f2a5c3e9b4fd0b53 . Some portions of this code extend Keras' interface. Newer versions of Keras might work but have not been tested.
+- word2vec (https://code.google.com/p/word2vec/) to generate embeddings from text.
+- Some visualization scripts use recent versions of matplotlib and scikit-learn.
+
