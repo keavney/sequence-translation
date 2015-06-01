@@ -124,7 +124,7 @@ class KVEmbed(object):
 
         pairs_softmax = [(word, i, sm) for (word, i), sm in izip(
                 ((word, i) for word, i, m in pairs),
-                numpy_softmax(m for word, i, m in pairs)
+                numpy_softmax([m for word, i, m in pairs])
                 )]
 
         sorted_pairs = sorted(pairs_softmax, key=lambda (word, i, m): m, reverse=True)[:n]
