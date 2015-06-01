@@ -6,6 +6,7 @@ import collections
 import helpers
 import output_dumps
 
+from datetime import datetime
 from log import log
 
 def main():
@@ -300,6 +301,8 @@ def h_train(cache, args):
     lr_A = get_required_arg(args, 'lr_encoder')
     lr_B = get_required_arg(args, 'lr_decoder')
 
+    timer_start = None
+
     # validation function
     def vf(sets, epoch_no):
         from utils import LN
@@ -313,11 +316,13 @@ def h_train(cache, args):
         ]
         #d = output_dumps.datadump(embedding_src, embedding_dst, model, sets, epoch_no, 25, 6, DLs)
         #print d
-
-        s = output_dumps.setacc(embedding_src, embedding_dst, model, sets, epoch_no, None, DLs)
+        elapsed = (datetime.utcnow() - timer_start).total_seconds()
+        s = output_dumps.setacc(embedding_src, embedding_dst, model, sets,
+                epoch_no, elapsed, None, DLs)
         print s
 
     print "Training model..."
+    timer_start = datetime.utcnow()
     model.fit(X, Y, M,
             lr_A=lr_A, lr_B=lr_B,
             batch_size=batch_size, nb_epoch=epochs, verbose=1,

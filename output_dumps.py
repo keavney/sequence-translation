@@ -168,9 +168,9 @@ def datadump(embed_src, embed_dst, model, sets, epoch_no, size, oe_size, DLs):
     return epoch
 
 # sets: expects tuples of (set name, input embeddings, label embeddings)
-def setacc(embed_src, embed_dst, model, sets, epoch_no, size, DLs):
+def setacc(embed_src, embed_dst, model, sets, epoch_no, td, size, DLs):
     e_sets = []
-    epoch = {'id': epoch_no, 'sets': e_sets}
+    epoch = {'id': epoch_no, 'time': td, 'sets': e_sets}
     data = {'epochs': [epoch]}
     for name, X_emb, Y_emb in sets: 
         if size is not None:
