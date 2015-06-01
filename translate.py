@@ -311,7 +311,11 @@ def h_train(cache, args):
                ('normal, L1', None, L1),
                ('D_L1_Usage, L1', w, L1),
         ]
-        output_dumps.datadump(embedding_src, embedding_dst, model, sets, epoch_no, 25, 6, DLs)
+        #d = output_dumps.datadump(embedding_src, embedding_dst, model, sets, epoch_no, 25, 6, DLs)
+        #print d
+
+        s = output_dumps.setacc(embedding_src, embedding_dst, model, sets, epoch_no, None, DLs)
+        print s
 
     print "Training model..."
     model.fit(X, Y, M,

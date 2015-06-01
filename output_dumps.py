@@ -165,5 +165,76 @@ def datadump(embed_src, embed_dst, model, sets, epoch_no, size, oe_size, DLs):
 
         s['summary'] = summaries
 
-    print epoch
+    return epoch
+
+# sets: expects tuples of (set name, input embeddings, label embeddings)
+def setacc(embed_src, embed_dst, model, sets, epoch_no, size, DLs):
+    e_sets = []
+    epoch = {'id': epoch_no, 'sets': e_sets}
+    data = {'epochs': [epoch]}
+    for name, X_emb, Y_emb in sets: 
+        if size is not None:
+            pairs = random.sample(zip(X_emb, Y_emb), size)
+            X_emb = [x for x, y in pairs]
+            Y_emb = [y for x, y in pairs]
+        entries = []
+        s = {'name': name, 'entries': entries}
+        e_sets.append(s)
+        R_emb = model.predict_batch(X_emb)
+        for i, (x_emb, y_emb, r_emb) in enumerate(izip(X_emb, Y_emb, R_emb)):
+            x = embed_src.match_sentence(list(reversed(x_emb)))
+            y = embed_dst.match_sentence(y_emb)
+
+            outputs = {}
+
+            for mode, D, metric in DLs:
+                r = embed_dst.match_sentence(r_emb, w=D, metric=metric)
+                correct = sum((yy == rr for yy, rr in izip(y, r)))
+                correct_pct = correct / float(len(y))
+                rank_position = [pred_index(lambda mm: mm[0] == yy, rr) for (yy, rr) in izip(y, r_all)]
+                rank_sorted = sorted(rank_position)
+                outputs[mode] = {
+                        'output': r,
+                        'correct': correct, 
+                        'correct_pct': correct_pct,
+                        'rank_position': rank_position,
+                        'rank_sorted': rank_sorted,
+                }
+
+            entry = {
+                    'id': i,
+                    'input': x,
+                    'label': y,
+                    'outputs': outputs,
+            }
+
+            entries.append(entry)
+
+        if len(entries) == 0:
+            s['summary'] = {}
+            continue
+
+        summaries = {}
+        for mode in entries[0]['outputs'].iterkeys():
+            D = None
+            for d in DLs:
+                if d[0] == mode:
+                    D = d
+                    break
+            avg_correct = mean([x['outputs'][mode]['correct'] for x in entries])
+            avg_correct_pct = mean([x['outputs'][mode]['correct_pct'] for x in entries])
+            avg_rank_position = [mean([x['outputs'][mode]['rank_position'][i] for x in entries]) for i in range(len(entries[0]['outputs'][mode]['output']))]
+            avg_rank_sorted = [mean([x['outputs'][mode]['rank_sorted'][i] for x in entries]) for i in range(len(entries[0]['outputs'][mode]['output']))]
+            summary = {
+                'D': D,
+                'avg_correct': avg_correct,
+                'avg_correct_pct': avg_correct_pct,
+                'avg_rank_position': avg_rank_position,
+                'avg_rank_sorted': avg_rank_sorted,
+            }
+            summaries[mode] = summary
+
+        s['summary'] = summaries
+
+    return epoch
 
