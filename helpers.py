@@ -166,7 +166,7 @@ def generate_D_L1_Usage(embed_src, embed_dst, model, X, Y):
 
     # create dictionary from softmax
     soft = numpy_softmax(list({k: (v / float(s)) for k, v in count.iteritems()}.itervalues()))
-    D = {k: math.log(1. / v) for k, v in zip(count.iterkeys(), soft)}
+    D = {k: 1. / -math.log(v) for k, v in zip(count.iterkeys(), soft)}
 
     return D
 

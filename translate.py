@@ -302,9 +302,14 @@ def h_train(cache, args):
 
     # validation function
     def vf(sets, epoch_no):
-        DLs = [('normal', None),
-               ('D_L1_Usage', helpers.generate_D_L1_Usage(
-                    embedding_src, embedding_dst, model, sets[0][1], sets[0][2])),
+        from utils import LN
+        w_raw = helpers.generate_D_L1_Usage(
+                    embedding_src, embedding_dst, model, sets[0][1], sets[0][2])
+        L1 = lambda vec, x: -LN(vec, x, n=1)
+        DLs = [('normal, L2', None, None),
+               ('D_L1_Usage, L2', w, None),
+               ('normal, L1', None, L1),
+               ('D_L1_Usage, L1', w, L1),
         ]
         output_dumps.datadump(embedding_src, embedding_dst, model, sets, epoch_no, 25, 6, DLs)
 

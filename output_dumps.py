@@ -114,9 +114,9 @@ def datadump(embed_src, embed_dst, model, sets, epoch_no, size, oe_size, DLs):
 
             outputs = {}
 
-            for mode, D in DLs:
-                r = embed_dst.match_sentence(r_emb, w=D)
-                r_all = [embed_dst.matchN(o, oe_size, w=D) for o in r_emb]
+            for mode, D, metric in DLs:
+                r = embed_dst.match_sentence(r_emb, w=D, metric=metric)
+                r_all = [embed_dst.matchN(o, oe_size, w=D, metric=metric) for o in r_emb]
                 correct = sum((yy == rr for yy, rr in izip(y, r)))
                 correct_pct = correct / float(len(y))
                 rank_position = [pred_index(lambda mm: mm[0] == yy, rr) for (yy, rr) in izip(y, r_all)]

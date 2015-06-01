@@ -1,5 +1,6 @@
 import numpy
 from utils import *
+from itertools import izip
 
 class KVEmbed(object):
     '''
@@ -95,10 +96,15 @@ class KVEmbed(object):
         return lookups
 
 
-    def matchN(self, vec, n, w=None):
+    default_metric = lambda vec, x: -LN(vec, x, n=2)
+    def matchN(self, vec, n, w=None, default=0, metric=None):
         '''
             Given an input vector of length self.embedding size, finds the top N closest
-            words. Outputs range from 0 (perfect match) to -inf as match quality decreases.
+            words. Word distance is calculated using metric (default: -L2 distance)
+            and weighted by w[word]. Softmax is calculated over all words and the
+            top N are returned.
+            
+            Outputs are of the form [(word, word id, 0 <= probability <= 1), ...]
 
             w should be either None or a dictionary of the form {word: weight}
 
@@ -107,20 +113,28 @@ class KVEmbed(object):
         if len(vec) != self.embedding_size:
             raise Exception("matchN: invalid input: expected vector of length {0} (received length {1})".format(self.embedding_size, len(vec)))
 
-        match_raw = [-LN(vec, x) for x in self.embed_matrix]
-        match_softmax = numpy_softmax(match_raw)
-        pairs = [(self.embed_matrix_lookup[i], i, m) for i, m in enumerate(match_softmax)]
+        if metric is None:
+            metric = default_metric
+
+        match_raw = (metric(vec, x) for x in self.embed_matrix)
+        pairs = [(self.embed_matrix_lookup[i], i, m) for i, m in enumerate(match_raw)]
 
         if w is not None:
-            pairs = [(word, i, m*w[word] if word in w else 0) for word, i, m in pairs]
+            pairs = [(word, i, m * (w[word] if word in w else default)) for word, i, m in pairs]
 
-        sorted_pairs = sorted(pairs, key=lambda (word, i, m): m, reverse=True)[:n]
+        pairs_softmax = [(word, i, sm) for (word, i), sm in izip(
+                ((word, i) for word, i, m in pairs),
+                numpy_softmax(m for word, i, m in pairs)
+                )
+
+        sorted_pairs = sorted(pairs_softmax, key=lambda (word, i, m): m, reverse=True)[:n]
         return sorted_pairs
 
-    def match1(self, vec, w=None):
-        return self.matchN(vec, 1, w=w)[0]
+    def match1(self, vec, w=None, default=0, metric=None):
+        return self.matchN(vec, 1, w=w, default=default, metric=metric)[0]
 
-    def match_sentence(self, sentence, w=None):
-        return self.clip([self.matchN(word, 1)[0][0] for word in sentence])
+    def match_sentence(self, sentence, w=None, default=0, metric=None):
+        return self.clip([self.matchN(word, 1, default=default, metric=metric)[0][0] \
+                for word in sentence])
         
 
