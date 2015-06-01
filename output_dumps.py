@@ -152,8 +152,11 @@ def datadump(embed_src, embed_dst, model, sets, epoch_no, size, oe_size, DLs):
                     break
             avg_correct = mean([x['outputs'][mode]['correct'] for x in entries])
             avg_correct_pct = mean([x['outputs'][mode]['correct_pct'] for x in entries])
-            avg_rank_position = [mean([x['outputs'][mode]['rank_position'][i] for x in entries]) for i in range(len(entries[0]['outputs'][mode]['output']))]
-            avg_rank_sorted = [mean([x['outputs'][mode]['rank_sorted'][i] for x in entries]) for i in range(len(entries[0]['outputs'][mode]['output']))]
+            #TODO: change these to account for clipping
+            #avg_rank_position = [mean([x['outputs'][mode]['rank_position'][i] for x in entries]) for i in range(len(entries[0]['outputs'][mode]['rank_position']))]
+            #avg_rank_sorted = [mean([x['outputs'][mode]['rank_sorted'][i] for x in entries]) for i in range(len(entries[0]['outputs'][mode]['rank_position']))]
+            avg_rank_position = -1
+            avg_rank_sorted = -1
             summary = {
                 'D': D,
                 'avg_correct': avg_correct,

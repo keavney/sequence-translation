@@ -69,6 +69,9 @@ def main():
     parser.add_argument('--lr-both', dest='lr_both', type=float,
             default=None,
             help="Learning rate for both")
+    parser.add_argument('--optimizer', dest='optimizer', type=str,
+            default='rmsprop',
+            help="Optimizer type (rmsprop, sgd, adadelta, adagrad)")
     parser.add_argument('--format', dest='test_format', type=str,
             default='',
             help="Test output format (options: pairs (default), simple, complex)")
@@ -245,8 +248,7 @@ def h_compile(cache, args):
 
     start_token=None 
     loss='mean_squared_error'
-    optimizer='rmsprop'
-    #TODO: add hyperparams
+    optimizer=get_required_arg(args, 'optimizer')
 
     # build model
     log("Building model...")
