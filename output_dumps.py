@@ -109,7 +109,7 @@ def datadump(embed_src, embed_dst, model, sets, epoch_no, size, oe_size, DLs):
         e_sets.append(s)
         R_emb = model.predict_batch(X_emb)
         for i, (x_emb, y_emb, r_emb) in enumerate(izip(X_emb, Y_emb, R_emb)):
-            x = embed_src.match_sentence(x_emb)
+            x = embed_src.match_sentence(list(reversed(x_emb)))
             y = embed_dst.match_sentence(y_emb)
 
             outputs = {}
