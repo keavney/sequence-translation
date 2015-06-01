@@ -15,7 +15,7 @@ def numpy_norm(x):
 def mean(x):
     return sum(x) / float(len(x))
 
-def LN(X, Y, n=1):
+def LN(X, Y, n=2):
     return numpy.linalg.norm(numpy.array(X)-numpy.array(Y), ord=n)
 
 # like .index() but with a predicate
