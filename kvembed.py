@@ -114,7 +114,7 @@ class KVEmbed(object):
             raise Exception("matchN: invalid input: expected vector of length {0} (received length {1})".format(self.embedding_size, len(vec)))
 
         if metric is None:
-            metric = default_metric
+            metric = self.default_metric
 
         match_raw = (metric(vec, x) for x in self.embed_matrix)
         pairs = [(self.embed_matrix_lookup[i], i, m) for i, m in enumerate(match_raw)]
