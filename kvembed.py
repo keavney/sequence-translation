@@ -42,9 +42,10 @@ class KVEmbed(object):
         # (index -> token)
         self.embed_matrix_lookup = {k: v for k, v in 
                 [x for x in enumerate(self.embedding_dict.iterkeys())]}
-
         
         self.eol_tokens = eol_tokens
+
+        self.default_metric = lambda vec, x: -LN(vec, x, n=2)
     
     def get(self, token):
         '''
@@ -96,7 +97,6 @@ class KVEmbed(object):
         return lookups
 
 
-    default_metric = lambda vec, x: -LN(vec, x, n=2)
     def matchN(self, vec, n, w=None, default=0, metric=None):
         '''
             Given an input vector of length self.embedding size, finds the top N closest
