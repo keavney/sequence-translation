@@ -177,25 +177,22 @@ class JointModel(object):
         score = self._test(X, y, M)
         return score
 
-    def fit(self, X, y, M, batch_size=128, nb_epoch=100, verbose=1, shuffle=True,
+    def fit(self,
+            X, Y, M,
+            X_val, Y_val, M_val,
             lr_A=None, lr_B=None,
-            validation_split=0., validation_skip=0, validation_callback=None):
+            batch_size=128, nb_epoch=100,
+            verbose=1, shuffle=True,
+            validation_skip=0, validation_callback=None,
+            snapshot_skip=0, snapshot_callback=None):
 
-        y = standardize_y(y)
-
-        # If a validation split size is given (e.g. validation_split=0.2)
-        # then split X into smaller X and X_val,
-        # and split y into smaller y and y_val.
+        # Require validation set to be explicitly passed in (to prevent risk
+        # of dataset contamination with the embedding step)
         do_validation = False
-        if validation_split > 0 and validation_split < 1:
+        if X_val is not None and Y_val is not None and M_val is not None:
             do_validation = True
-            split_at = int(len(X) * (1 - validation_split))
-            (X, X_val) = (X[0:split_at], X[split_at:])
-            (y, y_val) = (y[0:split_at], y[split_at:])
-            (M, M_val) = (M[0:split_at], M[split_at:])
             if verbose:
-                print "Train on %d samples, validate on %d samples" % (len(y), len(y_val))
-                print "validation_split", validation_split
+                print "Train on %d samples, validate on %d samples" % (len(Y), len(Y_val))
                 print "validation_skip", validation_skip, "validation_callback", (validation_callback is not None)
         
         index_array = numpy.arange(len(X))
@@ -213,9 +210,9 @@ class JointModel(object):
                 batch_ids = index_array[batch_start:batch_end]
 
                 X_batch = X[batch_ids]
-                y_batch = y[batch_ids]
+                Y_batch = Y[batch_ids]
                 M_batch = M[batch_ids]
-                loss = self._train(X_batch, y_batch, M_batch, lr_A, lr_B)
+                loss = self._train(X_batch, Y_batch, M_batch, lr_A, lr_B)
                 
                 if verbose:
                     is_last_batch = (batch_index == nb_batch - 1)
@@ -223,17 +220,23 @@ class JointModel(object):
                     if not is_last_batch or not do_validation:
                         progbar.update(batch_end, [('loss', loss*m)])
                     else:
-                        progbar.update(batch_end, [('loss', loss*m), ('val. loss', self.test(X_val, y_val, M_val)*m)])
+                        progbar.update(batch_end, [('loss', loss*m), ('val. loss', self.test(X_val, Y_val, M_val)*m)])
 
             # print validation/debug output every validation_skip epochs
             if validation_callback and validation_skip > 0 and not (epoch + 1) % validation_skip:
                 print "begin validation_callback:"
                 sets = []
-                sets.append(('train', X, y))
+                sets.append(('train', X, Y))
                 if do_validation:
-                    sets.append(('validate', X_val, y_val))
+                    sets.append(('validate', X_val, Y_val))
                 validation_callback(sets, epoch)
                 print "end validation_callback"
+
+            # create snapshots every snapshot_skip epochs
+            if snapshot_callback and snapshot_skip > 0 and not (epoch + 1) % snapshot_skip:
+                print "begin snapshot_callback:"
+                snapshot_callback(epoch)
+                print "end snapshot_callback"
 
     def predict_batch(self, X, batch_size=128):
         '''

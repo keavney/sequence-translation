@@ -35,6 +35,12 @@ def main():
             help="Training sentences for destination (decoder) network")
     parser.add_argument('--train-both', dest='train_both', type=str,
             help="Training sentences for both encoder and decoder network")
+    parser.add_argument('--validation-src', dest='validation_src', type=str,
+            help="Validation sentences for source (encoder) network")
+    parser.add_argument('--validation-dst', dest='validation_dst', type=str,
+            help="Validation sentences for destination (decoder) network")
+    parser.add_argument('--validation-both', dest='validation_both', type=str,
+            help="Test sentences for both encoder and decoder network")
     parser.add_argument('--test-src', dest='test_src', type=str,
             help="Test sentences for source (encoder) network")
     parser.add_argument('--test-dst', dest='test_dst', type=str,
@@ -54,12 +60,12 @@ def main():
             help="Training batch size")
     parser.add_argument('--epochs', dest='epochs', type=int,
             help="Number of training epochs")
-    parser.add_argument('--validation-pct', dest='validation_pct', type=float,
-            default=0,
-            help="Percent of training set used as validation set")
     parser.add_argument('--validation-skip', dest='validation_skip', type=float,
             default=10,
             help="Amount of epochs to skip before outputting validation translations")
+    parser.add_argument('--snapshot-skip', dest='snapshot_skip', type=float,
+            default=10,
+            help="Amount of epochs to skip between snapshots")
     parser.add_argument('--lr-encoder', dest='lr_encoder', type=float,
             default=None,
             help="Learning rate for encoder")
@@ -104,6 +110,8 @@ def main():
             help="Input filename for model weights")
     parser.add_argument('--output-model-weights', dest='output_model_weights', type=str,
             help="Output filename for model weights")
+    parser.add_argument('--output-snapshot-prefix', dest='output_snapshot_prefix', type=str,
+            help="Output prefix for snapshots")
 
     
     args = parser.parse_args()
@@ -112,6 +120,9 @@ def main():
     if args.train_both is not None:
         args.train_src = args.train_both
         args.train_dst = args.train_both
+    if args.validation_both is not None:
+        args.validation_src = args.validation_both
+        args.validation_dst = args.validation_both
     if args.test_both is not None:
         args.test_src = args.test_both
         args.test_dst = args.test_both
@@ -269,14 +280,24 @@ def h_train(cache, args):
     embedding_src = get_embedding(cache, args, 'embedding_src')
     embedding_dst = get_embedding(cache, args, 'embedding_dst')
 
-    # load dataset
+    # load train dataset
     train_src = get_required_arg(args, 'train_src')
     train_dst = get_required_arg(args, 'train_dst')
     maxlen = get_required_arg(args, 'maxlen')
 
-    X, Y, M, maxlen = helpers.load_dataset(
+    X_train, Y_train, M_train, maxlen = helpers.load_dataset(
             embedding_src, embedding_dst,
             train_src, train_dst,
+            maxlen)
+
+    # load validation dataset
+    validation_src = get_required_arg(args, 'validation_src')
+    validation_dst = get_required_arg(args, 'validation_dst')
+    maxlen = get_required_arg(args, 'maxlen')
+
+    X_validation, Y_validation, M_validation, maxlen = helpers.load_dataset(
+            embedding_src, embedding_dst,
+            validation_src, validation_dst,
             maxlen)
 
     # load model
@@ -298,38 +319,50 @@ def h_train(cache, args):
     # train model
     batch_size = get_required_arg(args, 'batch_size')
     epochs = get_required_arg(args, 'epochs')
-    validation_split = get_required_arg(args, 'validation_pct')
     validation_skip = get_required_arg(args, 'validation_skip')
+    snapshot_skip = get_required_arg(args, 'snapshot_skip')
     lr_A = get_required_arg(args, 'lr_encoder')
     lr_B = get_required_arg(args, 'lr_decoder')
 
+    # validation callback
     timer_start = None
-
-    # validation function
-    def vf(sets, epoch_no):
+    def validation_callback(sets, epoch_no):
         from utils import LN
         w_raw = helpers.generate_D_L1_Usage(
                     embedding_src, embedding_dst, model, sets[0][1], sets[0][2])
         L1 = lambda vec, x: -LN(vec, x, n=1)
         DLs = [('normal, L2', None, None),
-               ('D_L1_Usage, L2', w, None),
+               ('D_L1_Usage, L2', w_raw, None),
                ('normal, L1', None, L1),
-               ('D_L1_Usage, L1', w, L1),
+               ('D_L1_Usage, L1', w_raw, L1),
         ]
-        #d = output_dumps.datadump(embedding_src, embedding_dst, model, sets, epoch_no, 25, 6, DLs)
-        #print d
         elapsed = (datetime.utcnow() - timer_start).total_seconds()
+
         s = output_dumps.setacc(embedding_src, embedding_dst, model, sets,
-                epoch_no, elapsed, None, DLs)
+                epoch_no, elapsed, min(1000, len(X_validation)), DLs)
+
         print s
+
+    # snapshot callback
+    snapshot_prefix = args.output_snapshot_prefix
+    def snapshot_callback(epoch_no):
+        if snapshot_prefix:
+            snapshot_name = "{0}.{1}".format(snapshot_prefix, epoch_no)
+            print "Exporting snapshot weights to {0}".format(snapshot_name)
+            helpers.export_weights(model, snapshot_name)
 
     print "Training model..."
     timer_start = datetime.utcnow()
-    model.fit(X, Y, M,
+    model.fit(
+            X_train, Y_train, M_train,
+            X_validation, Y_validation, M_validation,
             lr_A=lr_A, lr_B=lr_B,
-            batch_size=batch_size, nb_epoch=epochs, verbose=1,
-            validation_split=validation_split, validation_skip=validation_skip,
-            validation_callback=vf,
+            batch_size=batch_size, nb_epoch=epochs,
+            verbose=1, shuffle=True,
+            validation_skip=validation_skip,
+            validation_callback=validation_callback,
+            snapshot_skip=snapshot_skip,
+            snapshot_callback=snapshot_callback
     )
 
     output_model = args.output_fitted_model
