@@ -7,7 +7,7 @@ import helpers
 import output_dumps
 
 from datetime import datetime
-from log import log
+from log import log, log_to_file, stat
 
 def main():
     # mapping of commands to handlers
@@ -85,6 +85,13 @@ def main():
             default='True',
             help="Compile training functions for model")
 
+    parser.add_argument('--log-global', dest='log_glob', type=str,
+            help="Log file for all output")
+    parser.add_argument('--log-info', dest='log_info', type=str,
+            help="Log file for updates (no data dumps)")
+    parser.add_argument('--log-stat', dest='log_stat', type=str,
+            help="Log file for stats (validation accuracy, etc)")
+
     # models
     parser.add_argument('--embedding-src', dest='embedding_src', type=str,
             help="Input filename for src embedding")
@@ -136,6 +143,14 @@ def main():
         args.lr_encoder = args.lr_both
         args.lr_decoder = args.lr_both
 
+    # handle logs
+    if args.log_glob is not None:
+        log_to_file('glob', args.log_glob)
+    if args.log_info is not None:
+        log_to_file('info', args.log_info)
+    if args.log_stat is not None:
+        log_to_file('stat', args.log_stat)
+
     log("Loaded arguments")
     print args
     
@@ -156,6 +171,8 @@ def main():
             log("Entering command: {0}".format(name))
             handler(cache, args)
             log("Finished command: {0}".format(name))
+    
+    log("Finished all commands, exiting")
 
 
 # wrapper for args lookup that exits if arg wasn't provided
@@ -324,32 +341,40 @@ def h_train(cache, args):
     lr_A = get_required_arg(args, 'lr_encoder')
     lr_B = get_required_arg(args, 'lr_decoder')
 
-    # validation callback
+    # callback
     timer_start = None
-    def validation_callback(sets, epoch_no):
-        from utils import LN
-        w_raw = helpers.generate_D_L1_Usage(
-                    embedding_src, embedding_dst, model, sets[0][1], sets[0][2])
-        L1 = lambda vec, x: -LN(vec, x, n=1)
-        DLs = [('normal, L2', None, None),
-               ('D_L1_Usage, L2', w_raw, None),
-               ('normal, L1', None, L1),
-               ('D_L1_Usage, L1', w_raw, L1),
-        ]
+    snapshot_prefix = args.output_snapshot_prefix
+    def epoch_callback(sets, epoch):
         elapsed = (datetime.utcnow() - timer_start).total_seconds()
 
-        s = output_dumps.setacc(embedding_src, embedding_dst, model, sets,
-                epoch_no, elapsed, min(1000, len(X_validation)), DLs)
+        log("Begin epoch callback for epoch {0}".format(epoch))
+        if validation_skip > 0 and (epoch + 1) % validation_skip == 0:
+            from utils import LN
+            w_raw = helpers.generate_D_L1_Usage(
+                        embedding_src, embedding_dst, model, sets[0][1], sets[0][2])
+            L1 = lambda vec, x: -LN(vec, x, n=1)
+            DLs = [('normal, L2', None, None),
+                   ('D_L1_Usage, L2', w_raw, None),
+                   ('normal, L1', None, L1),
+                   ('D_L1_Usage, L1', w_raw, L1),
+            ]
 
-        print s
+            s = output_dumps.setacc(embedding_src, embedding_dst, model, sets,
+                    epoch, elapsed, min(1000, len(X_validation)), DLs)
+        else:
+            set_dicts = {name: {'loss': loss} for name, X, Y, loss in sets}
+            s = {'epoch': epoch, 'time': elapsed, 'sets': set_dicts}
 
-    # snapshot callback
-    snapshot_prefix = args.output_snapshot_prefix
-    def snapshot_callback(epoch_no):
-        if snapshot_prefix:
-            snapshot_name = "{0}.{1}".format(snapshot_prefix, epoch_no)
-            print "Exporting snapshot weights to {0}".format(snapshot_name)
+        stat.info("{0},".format(s))
+
+        # take snapshot
+        if snapshot_prefix and snapshot_skip > 0 and (epoch + 1) % snapshot_skip == 0:
+            snapshot_name = "{0}.{1}".format(snapshot_prefix, epoch)
+            log("Exporting snapshot weights for epoch {0} to {1}".format(epoch, snapshot_name))
             helpers.export_weights(model, snapshot_name)
+            log("Exported snapshot weights for epoch {0}".format(epoch))
+
+        log("End epoch callback for epoch {0}".format(epoch))
 
     print "Training model..."
     timer_start = datetime.utcnow()
@@ -359,10 +384,7 @@ def h_train(cache, args):
             lr_A=lr_A, lr_B=lr_B,
             batch_size=batch_size, nb_epoch=epochs,
             verbose=1, shuffle=True,
-            validation_skip=validation_skip,
-            validation_callback=validation_callback,
-            snapshot_skip=snapshot_skip,
-            snapshot_callback=snapshot_callback
+            epoch_callback=epoch_callback
     )
 
     output_model = args.output_fitted_model
@@ -425,14 +447,6 @@ def h_test(cache, args):
     for DL in DLs:
         print DL
 
-    #if test_format == 'complex':
-    #    output_dumps.realtest(embedding_src, embedding_dst, model, X, Y)
-    #elif test_format == 'simple':
-    #    output_dumps.simpletest(embedding_src, embedding_dst, model, X, Y)
-    #else:
-    #    output_dumps.nptest(embedding_src, embedding_dst, model, X, Y)
-
-
 def h_export(cache, args):
     # load model
     model = get_fitted_model(cache, args)
@@ -452,9 +466,6 @@ def h_interactive(cache, args):
     embedding_dst = get_embedding(cache, args, 'embedding_dst')
 
     maxlen = model.model_B.steps
-
-    #D = {'x': 1.2917847775734186, 'ONE': 1.8946203078645807, 'TWO': 1.9620620642372502, 'THREE': 1.928626529470113, 'DONE': 1.8997229195961116, 'FOUR': 1.9709916347674294}
-    #D = {'a':1, '.':1, 'A':1, 'AA':1, 'AAA':1, 'AAAA':1}
 
     D = None
 
@@ -480,5 +491,4 @@ def h_interactive(cache, args):
         print ""
         
 main()    
-
 

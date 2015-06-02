@@ -170,19 +170,19 @@ def datadump(embed_src, embed_dst, model, sets, epoch_no, size, oe_size, DLs):
 
     return epoch
 
-# sets: expects tuples of (set name, input embeddings, label embeddings)
+# sets: expects tuples of (set name, input embeddings, label embeddings, loss)
 def setacc(embed_src, embed_dst, model, sets, epoch_no, td, size, DLs):
-    e_sets = []
-    epoch = {'id': epoch_no, 'time': td, 'sets': e_sets}
+    e_sets = {}
+    epoch = {'epoch': epoch_no, 'time': td, 'sets': e_sets}
     data = {'epochs': [epoch]}
-    for name, X_emb, Y_emb in sets: 
+    for name, X_emb, Y_emb, loss in sets: 
         if size is not None:
             pairs = random.sample(zip(X_emb, Y_emb), size)
             X_emb = [x for x, y in pairs]
             Y_emb = [y for x, y in pairs]
         entries = []
-        s = {'name': name}
-        e_sets.append(s)
+        s = {'loss': loss}
+        e_sets[name] = s
         R_emb = model.predict_batch(X_emb)
         for i, (x_emb, y_emb, r_emb) in enumerate(izip(X_emb, Y_emb, R_emb)):
             x = embed_src.match_sentence(list(reversed(x_emb)))

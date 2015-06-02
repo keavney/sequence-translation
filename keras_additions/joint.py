@@ -183,17 +183,17 @@ class JointModel(object):
             lr_A=None, lr_B=None,
             batch_size=128, nb_epoch=100,
             verbose=1, shuffle=True,
-            validation_skip=0, validation_callback=None,
-            snapshot_skip=0, snapshot_callback=None):
+            epoch_callback=None):
 
         # Require validation set to be explicitly passed in (to prevent risk
         # of dataset contamination with the embedding step)
+        m = 10000
         do_validation = False
         if X_val is not None and Y_val is not None and M_val is not None:
             do_validation = True
             if verbose:
-                print "Train on %d samples, validate on %d samples" % (len(Y), len(Y_val))
-                print "validation_skip", validation_skip, "validation_callback", (validation_callback is not None)
+                print "Train on {0} samples, validate on {1} samples for {2} epochs".format(len(Y), len(Y_val), nb_epoch)
+                print "epoch callback: {0}".format("yes" if epoch_callback else "no")
         
         index_array = numpy.arange(len(X))
         for epoch in range(nb_epoch):
@@ -204,6 +204,8 @@ class JointModel(object):
 
             nb_batch = int(numpy.ceil(len(X)/float(batch_size)))
             progbar = Progbar(target=len(X))
+            loss = 0
+            val_loss = 0
             for batch_index in range(0, nb_batch):
                 batch_start = batch_index*batch_size
                 batch_end = min(len(X), (batch_index+1)*batch_size)
@@ -216,27 +218,19 @@ class JointModel(object):
                 
                 if verbose:
                     is_last_batch = (batch_index == nb_batch - 1)
-                    m = 10000
                     if not is_last_batch or not do_validation:
                         progbar.update(batch_end, [('loss', loss*m)])
                     else:
-                        progbar.update(batch_end, [('loss', loss*m), ('val. loss', self.test(X_val, Y_val, M_val)*m)])
+                        val_loss = self.test(X_val, Y_val, M_val)
+                        progbar.update(batch_end, [('loss', loss*m), ('val. loss', val_loss*m)])
 
-            # print validation/debug output every validation_skip epochs
-            if validation_callback and validation_skip > 0 and not (epoch + 1) % validation_skip:
-                print "begin validation_callback:"
+            # call epoch callback after each round
+            if epoch_callback:
                 sets = []
-                sets.append(('train', X, Y))
+                sets.append(('train', X, Y, float(loss)))
                 if do_validation:
-                    sets.append(('validate', X_val, Y_val))
-                validation_callback(sets, epoch)
-                print "end validation_callback"
-
-            # create snapshots every snapshot_skip epochs
-            if snapshot_callback and snapshot_skip > 0 and not (epoch + 1) % snapshot_skip:
-                print "begin snapshot_callback:"
-                snapshot_callback(epoch)
-                print "end snapshot_callback"
+                    sets.append(('validate', X_val, Y_val, float(val_loss)))
+                epoch_callback(sets, epoch)
 
     def predict_batch(self, X, batch_size=128):
         '''
