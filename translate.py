@@ -21,7 +21,8 @@ def main():
     ]
 
     # create parser
-    parser = argparse.ArgumentParser(description="LSTM Encoder Decoder")
+    parser = argparse.ArgumentParser(description="LSTM Encoder Decoder",
+            fromfile_prefix_chars='@')
     
     # global
     helpstr = "List of commands: " + ', '.join([x[0] for x in valid_commands])
@@ -48,18 +49,24 @@ def main():
     parser.add_argument('--test-both', dest='test_both', type=str,
             help="Test sentences for both encoder and decoder network")
 
-    # parameters
+    # compile parameters
     parser.add_argument('--embedding-size', dest='embedding_size', type=int,
             help="Embedding vector size")
     parser.add_argument('--layers', dest='layer_count', type=int,
             help="Network layer count")
     parser.add_argument('--max-sentence-length', dest='maxlen', type=int,
             help="Maximum sentence length")
+    parser.add_argument('--optimizer', dest='optimizer', type=str,
+            default='adagrad',
+            help="Optimizer type (rmsprop, sgd, adadelta, adagrad)")
+    parser.add_argument('--compile-train', dest='compile_train', type=str,
+            default='True',
+            help="Compile training functions for model")
+
+    # train parameters
     parser.add_argument('--batch-size', dest='batch_size', type=int,
             default=16,
             help="Training batch size")
-    parser.add_argument('--epochs', dest='epochs', type=int,
-            help="Number of training epochs")
     parser.add_argument('--validation-skip', dest='validation_skip', type=float,
             default=10,
             help="Amount of epochs to skip before outputting validation translations")
@@ -75,16 +82,27 @@ def main():
     parser.add_argument('--lr-both', dest='lr_both', type=float,
             default=None,
             help="Learning rate for both")
-    parser.add_argument('--optimizer', dest='optimizer', type=str,
-            default='rmsprop',
-            help="Optimizer type (rmsprop, sgd, adadelta, adagrad)")
+
+    # trianing thresholds
+    parser.add_argument('--epochs', dest='epochs', type=int,
+            default=None,
+            help="Cutoff for training (number of epochs)")
+    parser.add_argument('--error', dest='accuracy', type=float,
+            default=None,
+            help="Cutoff for training (test and validation error)")
+    parser.add_argument('--seconds', dest='seconds', type=float,
+            default=None,
+            help="Cutoff for training (total seconds elapsed)")
+    parser.add_argument('--loss', dest='loss', type=float,
+            default=None,
+            help="Cutoff for training (test and validation loss)")
+
+    # test parameters
     parser.add_argument('--format', dest='test_format', type=str,
             default='',
             help="Test output format (options: pairs (default), simple, complex)")
-    parser.add_argument('--compile-train', dest='compile_train', type=str,
-            default='True',
-            help="Compile training functions for model")
 
+    # logging
     parser.add_argument('--log-global', dest='log_glob', type=str,
             help="Log file for all output")
     parser.add_argument('--log-info', dest='log_info', type=str,
@@ -335,17 +353,46 @@ def h_train(cache, args):
 
     # train model
     batch_size = get_required_arg(args, 'batch_size')
-    epochs = get_required_arg(args, 'epochs')
     validation_skip = get_required_arg(args, 'validation_skip')
     snapshot_skip = get_required_arg(args, 'snapshot_skip')
     lr_A = get_required_arg(args, 'lr_encoder')
     lr_B = get_required_arg(args, 'lr_decoder')
 
-    # callback
     timer_start = None
+
+    def get_elapsed():
+        return (datetime.utcnow() - timer_start).total_seconds()
+
+    # policy evaluated at beginning of each epoch:
+    # stop training if any thresholds are met
+    def continue_training(epoch, callback_result):
+        def check_threshold_lt(left, right):
+            return left is not None and right is not None and left < right
+        def check_threshold_gt(left, right):
+            return left is not None and right is not None and left > right
+
+        loss = callback_result['sets']['train']['loss']
+        val_loss = callback_result['sets']['validate']['loss']
+        try:
+            error = 1 - callback_result['sets']['train']['summary']['normal, L2']['avg_correct_pct']
+        except KeyError:
+            error = None
+        try:
+            val_error = 1 - callback_result['sets']['validate']['summary']['normal, L2']['avg_correct_pct']
+        except KeyError:
+            val_error = None
+
+        return not (
+            check_threshold_gt(epoch, args.epochs) or \
+            check_threshold_gt(get_elapsed(), args.seconds) or \
+            (check_threshold_lt(loss, args.loss) and check_threshold_lt(val_loss, args.loss)) or \
+            (check_threshold_lt(error, args.error) and check_threshold_lt(val_error, args.error))
+        )
+
+    # end of epoch callback: output stats, take snapshot
     snapshot_prefix = args.output_snapshot_prefix
     def epoch_callback(sets, epoch):
-        elapsed = (datetime.utcnow() - timer_start).total_seconds()
+        elapsed = get_elapsed()
 
         log("Begin epoch callback for epoch {0}".format(epoch))
         if validation_skip > 0 and (epoch + 1) % validation_skip == 0:
@@ -375,26 +422,28 @@ def h_train(cache, args):
             log("Exported snapshot weights for epoch {0}".format(epoch))
 
         log("End epoch callback for epoch {0}".format(epoch))
+        return s
 
-    print "Training model..."
+    log("Training model...")
     timer_start = datetime.utcnow()
     model.fit(
             X_train, Y_train, M_train,
             X_validation, Y_validation, M_validation,
             lr_A=lr_A, lr_B=lr_B,
-            batch_size=batch_size, nb_epoch=epochs,
+            batch_size=batch_size,
             verbose=1, shuffle=True,
+            continue_training=continue_training,
             epoch_callback=epoch_callback
     )
 
     output_model = args.output_fitted_model
     if output_model is not None:
-        print "Exporting fitted model to {0}".format(output_model)
+        log("Exporting fitted model to {0}".format(output_model))
         helpers.export_model(model, output_model)
 
     output_weights = args.output_model_weights
     if output_weights is not None:
-        print "Exporting fitted weights to {0}".format(output_weights)
+        log("Exporting fitted weights to {0}".format(output_weights))
         helpers.export_weights(model, output_weights)
 
     cache['fitted_model'] = model

@@ -181,9 +181,10 @@ class JointModel(object):
             X, Y, M,
             X_val, Y_val, M_val,
             lr_A=None, lr_B=None,
-            batch_size=128, nb_epoch=100,
+            batch_size=128,
             verbose=1, shuffle=True,
-            epoch_callback=None):
+            continue_training=lambda *_: True,
+            epoch_callback=lambda *_: None):
 
         # Require validation set to be explicitly passed in (to prevent risk
         # of dataset contamination with the embedding step)
@@ -196,7 +197,9 @@ class JointModel(object):
                 print "epoch callback: {0}".format("yes" if epoch_callback else "no")
         
         index_array = numpy.arange(len(X))
-        for epoch in range(nb_epoch):
+        epoch = 0
+        callback_result = None
+        while continue_training(epoch, callback_result):
             if verbose:
                 print 'Epoch', epoch
             if shuffle:
@@ -204,8 +207,6 @@ class JointModel(object):
 
             nb_batch = int(numpy.ceil(len(X)/float(batch_size)))
             progbar = Progbar(target=len(X))
-            loss = 0
-            val_loss = 0
             for batch_index in range(0, nb_batch):
                 batch_start = batch_index*batch_size
                 batch_end = min(len(X), (batch_index+1)*batch_size)
@@ -225,12 +226,13 @@ class JointModel(object):
                         progbar.update(batch_end, [('loss', loss*m), ('val. loss', val_loss*m)])
 
             # call epoch callback after each round
-            if epoch_callback:
-                sets = []
-                sets.append(('train', X, Y, float(loss)))
-                if do_validation:
-                    sets.append(('validate', X_val, Y_val, float(val_loss)))
-                epoch_callback(sets, epoch)
+            sets = []
+            sets.append(('train', X, Y, float(loss)))
+            if do_validation:
+                sets.append(('validate', X_val, Y_val, float(val_loss)))
+            callback_result = epoch_callback(sets, epoch)
+
+            epoch += 1
 
     def predict_batch(self, X, batch_size=128):
         '''
