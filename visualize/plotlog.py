@@ -5,13 +5,13 @@ from matplotlib.pyplot import *
 from itertools import cycle
 
 if len(sys.argv) < 4:
-    print "usage: {0} metric(loss, etc) [epoch|time] logs...".format(sys.argv[0])
+    print "usage: {0} [loss|accuracy|other metric] [epoch|time] logs...".format(sys.argv[0])
     exit()
 
 colors = cycle(['r', 'b', 'g', 'k', 'c', 'm', 'y'])
 sets = [('train', '-'), ('validate', '--')]
 maxval = 1e10
-m = 10000
+m = 1
 convert = lambda x: min(float(x*m), maxval)
 showmax = False
 showmin = False
@@ -19,6 +19,10 @@ showmin = False
 plotsets = []
 metric = sys.argv[1]
 xtype = sys.argv[2]
+
+# use default loss
+if metric == 'accuracy':
+    metric = 'normal, L2'
 
 for arg in sys.argv[3:]:
     print 'reading', arg
