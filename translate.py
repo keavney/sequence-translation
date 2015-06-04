@@ -87,7 +87,7 @@ def main():
     parser.add_argument('--epochs', dest='epochs', type=int,
             default=None,
             help="Cutoff for training (number of epochs)")
-    parser.add_argument('--error', dest='accuracy', type=float,
+    parser.add_argument('--error', dest='error', type=float,
             default=None,
             help="Cutoff for training (test and validation error)")
     parser.add_argument('--seconds', dest='seconds', type=float,
@@ -370,17 +370,18 @@ def h_train(cache, args):
             return left is not None and right is not None and left < right
         def check_threshold_gt(left, right):
             return left is not None and right is not None and left > right
+        def dg(l):
+            try:
+                return l()
+            except KeyError:
+                return None
+            except TypeError:
+                return None
 
-        loss = callback_result['sets']['train']['loss']
-        val_loss = callback_result['sets']['validate']['loss']
-        try:
-            error = 1 - callback_result['sets']['train']['summary']['normal, L2']['avg_correct_pct']
-        except KeyError:
-            error = None
-        try:
-            val_error = 1 - callback_result['sets']['validate']['summary']['normal, L2']['avg_correct_pct']
-        except KeyError:
-            val_error = None
+        loss      = dg(lambda: callback_result['sets']['train']['loss'])
+        val_loss  = dg(lambda: callback_result['sets']['validate']['loss'])
+        error     = dg(lambda: 1 - callback_result['sets']['train']['summary']['normal, L2']['avg_correct_pct'])
+        val_error = dg(lambda: 1 - callback_result['sets']['validate']['summary']['normal, L2']['avg_correct_pct'])
 
         return not (
             check_threshold_gt(epoch, args.epochs) or \

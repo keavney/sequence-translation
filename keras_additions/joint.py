@@ -193,7 +193,7 @@ class JointModel(object):
         if X_val is not None and Y_val is not None and M_val is not None:
             do_validation = True
             if verbose:
-                print "Train on {0} samples, validate on {1} samples for {2} epochs".format(len(Y), len(Y_val), nb_epoch)
+                print "Train on {0} samples, validate on {1} samples".format(len(Y), len(Y_val))
                 print "epoch callback: {0}".format("yes" if epoch_callback else "no")
         
         index_array = numpy.arange(len(X))
