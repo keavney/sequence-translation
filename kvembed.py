@@ -2,13 +2,15 @@ import numpy
 from utils import *
 from itertools import izip
 
+ftype = numpy.float32
+
 class KVEmbed(object):
     '''
         Object with a dictionary of {token: embedding value} pairs.
 
     '''
 
-    default_rep = lambda x: numpy.array(x, dtype=numpy.float32)
+    default_rep = lambda x: numpy.array(x, dtype=ftype)
 
     invalid_token = "<INVALID>"
 

@@ -27,6 +27,8 @@ from kvembed import KVEmbed
 from utils import *
 from output_dumps import *
 
+ftype = numpy.float32
+
 
 def import_model(filename):
     model = None
@@ -84,7 +86,7 @@ def export_weights(model, filename):
 
 def create_embed(input_file):
     log("creating kv embed")
-    eol = [('.', True)]
+    eol = [('.', True), ('!', True), ('?', True)]
     embed = KVEmbed(input_file, eol_tokens=eol)
     log("done")
     return embed
@@ -146,9 +148,15 @@ def load_dataset(embed_src, embed_dst, infile_src, infile_dst, maxlen):
     vectors_Y = [x + [eol_token_Y]*(maxlen-len(x)) for x in vectors_Y]
 
     # convert to array
-    X = numpy.array(vectors_X)
-    Y = numpy.array(vectors_Y)
-    M = numpy.array(mask)
+    X = numpy.array(vectors_X, dtype=ftype)
+    print 'loaded X'
+    print X.nbytes
+    Y = numpy.array(vectors_Y, dtype=ftype)
+    print 'loaded Y'
+    print Y.nbytes
+    M = numpy.array(mask, dtype=ftype)
+    print 'loaded M'
+    print M.nbytes
 
     print 'loaded sets X, Y, M with lengths: {0}, {1}, {2}'.format(len(X), len(Y), len(M))
 
