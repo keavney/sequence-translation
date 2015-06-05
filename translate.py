@@ -217,11 +217,14 @@ def get_fitted_model(cache, args):
     # load model
     input_model = args.fitted_model
     input_weights = args.model_weights
+    compiled_model = args.compiled_model
     model = None
     if input_model is not None:
         model = helpers.import_model(input_model)
     elif input_weights is not None:
         model = cache['compiled_model']
+        if compiled_model is not None:
+            model = helpers.import_model(compiled_model)
         if model is None:
             print "Error loading fitted model: weights were provided, but a model was not compiled. Exiting"
         weights = helpers.import_weights(input_weights)
@@ -259,13 +262,14 @@ def h_create(cache, args):
     # call process
     def s_call(inf, outf):
         call_args = [
-                '-train',  inf,
-                '-output', outf,
-                '-cbow',   '1', 
-                '-size',   str(embedding_size),
-                '-window', '8',
-                '-binary', '0',
-                '-iter',   '15',
+                '-train',     inf,
+                '-output',    outf,
+                '-cbow',      '1', 
+                '-size',      str(embedding_size),
+                '-window',    '8',
+                '-binary',    '0',
+                '-iter',      '15',
+                '-min-count', '1',
         ]
         subprocess.call([e] + call_args)
 
@@ -398,17 +402,22 @@ def h_train(cache, args):
         log("Begin epoch callback for epoch {0}".format(epoch))
         if validation_skip > 0 and (epoch + 1) % validation_skip == 0:
             from utils import LN
-            w_raw = helpers.generate_D_L1_Usage(
-                        embedding_src, embedding_dst, model, sets[0][1], sets[0][2])
             L1 = lambda vec, x: -LN(vec, x, n=1)
+
+            #w_raw = helpers.generate_D_L1_Usage(
+            #            embedding_src, embedding_dst, model, sets[0][1], sets[0][2])
+            #DLs = [('normal, L2', None, None),
+            #       ('D_L1_Usage, L2', w_raw, None),
+            #       ('normal, L1', None, L1),
+            #       ('D_L1_Usage, L1', w_raw, L1),
+            #]
+
             DLs = [('normal, L2', None, None),
-                   ('D_L1_Usage, L2', w_raw, None),
                    ('normal, L1', None, L1),
-                   ('D_L1_Usage, L1', w_raw, L1),
             ]
 
             s = output_dumps.setacc(embedding_src, embedding_dst, model, sets,
-                    epoch, elapsed, min(1000, len(X_validation)), DLs)
+                    epoch, elapsed, min(100, len(X_validation)), DLs)
         else:
             set_dicts = {name: {'loss': loss} for name, X, Y, loss in sets}
             s = {'epoch': epoch, 'time': elapsed, 'sets': set_dicts}
@@ -474,25 +483,25 @@ def h_test(cache, args):
     print test_format
 
 
-    # generate DLs from training corpus (todo: make this part of the model)
-    train_src = get_required_arg(args, 'train_src')
-    train_dst = get_required_arg(args, 'train_dst')
-    X_t, Y_t, M_t, maxlen_t = helpers.load_dataset(
-            embedding_src, embedding_dst,
-            train_src, train_dst,
-            maxlen)
+    ## generate DLs from training corpus (todo: make this part of the model)
+    #train_src = get_required_arg(args, 'train_src')
+    #train_dst = get_required_arg(args, 'train_dst')
+    #X_t, Y_t, M_t, maxlen_t = helpers.load_dataset(
+    #        embedding_src, embedding_dst,
+    #        train_src, train_dst,
+    #        maxlen)
 
     DLs = []
     DLs.append(('normal', None))
 
-    print 'generate D_L1_Usage'
-    D_L1_Usage = helpers.generate_D_L1_Usage(embedding_src, embedding_dst, model, X_t, Y_t)
-    print 'D_L1_Usage', D_L1_Usage
-    DLs.append(('D_L1_Usage', D_L1_Usage))
+    #print 'generate D_L1_Usage'
+    #D_L1_Usage = helpers.generate_D_L1_Usage(embedding_src, embedding_dst, model, X_t, Y_t)
+    #print 'D_L1_Usage', D_L1_Usage
+    #DLs.append(('D_L1_Usage', D_L1_Usage))
 
     print 'done DLs'
 
-    output_dumps.nptest_dict(embedding_src, embedding_dst, model, X, Y, DLs)
+    output_dumps.nptest_dict(embedding_src, embedding_dst, model, X, Y, M, DLs)
 
     for DL in DLs:
         print DL

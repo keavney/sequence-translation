@@ -41,7 +41,10 @@ def nptest(embed_src, embed_dst, model, X, Y):
     return R_translations
 
 
-def nptest_dict(embed_src, embed_dst, model, X, Y, DLs):
+def nptest_dict(embed_src, embed_dst, model, X, Y, M, DLs):
+    # clip Y
+    Y = [y[:len([mv[0] for mv in m if mv[0]])] for y, m in izip(Y, M)]
+
     X_translations = [embed_src.match_sentence(list(reversed(x))) for x in X]
     Y_translations = [embed_dst.match_sentence(y) for y in Y]
 
@@ -177,9 +180,13 @@ def setacc(embed_src, embed_dst, model, sets, epoch_no, td, size, DLs):
     data = {'epochs': [epoch]}
     for name, X_emb, Y_emb, loss in sets: 
         if size is not None:
-            pairs = random.sample(zip(X_emb, Y_emb), size)
-            X_emb = [x for x, y in pairs]
-            Y_emb = [y for x, y in pairs]
+            ## too slow
+            #pairs = random.sample(zip(X_emb, Y_emb), size)
+            #X_emb = [x for x, y in pairs]
+            #Y_emb = [y for x, y in pairs]
+            indices = [random.randint(0, len(X_emb)-1) for i in xrange(size)]
+            X_emb = [X_emb[i] for i in indices]
+            Y_emb = [Y_emb[i] for i in indices]
         entries = []
         s = {'loss': loss}
         e_sets[name] = s
