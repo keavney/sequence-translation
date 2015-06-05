@@ -225,6 +225,8 @@ class JointModel(object):
                         val_loss = self.test(X_val, Y_val, M_val)
                         progbar.update(batch_end, [('loss', loss*m), ('val. loss', val_loss*m)])
 
+            loss = progbar.sum_values['loss'][0] / progbar.sum_values['loss'][1]
+
             # call epoch callback after each round
             sets = []
             sets.append(('train', X, Y, float(loss)))
