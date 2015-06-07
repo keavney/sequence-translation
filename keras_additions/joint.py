@@ -228,11 +228,12 @@ class JointModel(object):
             loss = progbar.sum_values['loss'][0] / (m * progbar.sum_values['loss'][1])
 
             # call epoch callback after each round
-            sets = []
-            sets.append(('train', X, Y, float(loss)))
+            round_stats = {}
+            round_stats['train'] = {'loss': float(loss)}
             if do_validation:
-                sets.append(('validate', X_val, Y_val, float(val_loss)))
-            callback_result = epoch_callback(sets, epoch)
+                round_stats['validate'] = {'loss': float(val_loss)}
+
+            callback_result = epoch_callback(round_stats, epoch)
 
             epoch += 1
 

@@ -173,6 +173,54 @@ def datadump(embed_src, embed_dst, model, sets, epoch_no, size, oe_size, DLs):
 
     return epoch
 
+def full_stats(round_stats, sets, DLs, model, sample_size=None, batch_size=8, log=lambda *_: None):
+    if len(DLs) != 1:
+        raise Exception("len(DLs) != 1 (only normal, L2 is supported)")
+    DL = DLs[0]
+    fm = DL[2]
+
+    stats = round_stats
+
+    for name, sdict in sets.iteritems():
+        X_emb = sdict['X_emb']
+        Y_tokens = sdict['Y_tokens']
+        summary = {}
+        summaries = {DL[0]: summary}
+        stats[name]['summary'] = summaries
+
+        if sample_size is not None:
+            indices = [random.randint(0, len(X_emb)-1) for i in xrange(sample_size)]
+            X_emb = [X_emb[i] for i in indices]
+            Y_tokens = [Y_tokens[i] for i in indices]
+
+        R_emb = model.predict_batch(X_emb)
+        bs = fm.batch_size
+        R_tokens = []
+
+        correct_pct_total = 0
+        correct_pct_size = 0
+
+        while len(R_emb):
+            Y_tokens_batch = Y_tokens[:bs]
+            R_emb_batch = R_emb[:bs]
+
+            R_tokens_batch = fm.match(R_emb_batch, log=log)
+
+            correct = [sum((yy == rr for yy, rr in izip(y, r))) for y, r \
+                    in izip(Y_tokens_batch, R_tokens_batch)]
+            correct_pct = [c / float(len(y)) for c, y in izip(correct, Y_tokens_batch)]
+
+            correct_pct_total += sum(correct_pct)
+            correct_pct_size += len(correct_pct)
+
+            Y_tokens = Y_tokens[bs:]
+            R_emb = R_emb[bs:]
+
+        summary['avg_correct_pct'] = correct_pct_total / float(correct_pct_size)
+
+    return stats
+
+
 # sets: expects tuples of (set name, input embeddings, label embeddings, loss)
 def setacc(embed_src, embed_dst, model, sets, epoch_no, td, size, DLs):
     e_sets = {}

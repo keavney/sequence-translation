@@ -185,6 +185,56 @@ def load_dataset_test(embed_src, embed_dst, infile_src, infile_dst, maxlen):
     return X, X_words, Y_words, maxlen
 
 
+def ds_request(req, embed_src, embed_dst, infile_src, infile_dst, maxlen):
+    res = {}
+    if 'X_emb' in req:
+        X_vectors, X_eol_token = _load_dataset(embed_src, infile_src, maxlen, reverse=True)
+        X_padded_vectors = [[X_eol_token]*(maxlen-len(x)) + x for x in X_vectors]
+        X = numpy.array(X_padded_vectors, dtype=ftype)
+        print 'loaded X'
+        print X.nbytes
+        res['X_emb'] = X
+    
+    if 'X_tokens' in req:
+        X_tokens, _ = _load_dataset(embed_src, infile_src, maxlen, reverse=True, convert=False)
+        res['X_tokens'] = X_tokens
+
+    if 'Y_emb' in req:
+        Y_vectors, Y_eol_token = _load_dataset(embed_src, infile_src, maxlen, reverse=False)
+
+        if 'M' in req:
+            # create mask from Y vectors
+            s = embed_dst.embedding_size
+            mask = [[[1.]*s]*len(y) + [[0.]*s]*(maxlen-len(y)) for y in Y_vectors]
+            M = numpy.array(mask, dtype=ftype)
+            print 'loaded M'
+            print M.nbytes
+            res['M'] = M
+
+        Y_padded_vectors = [y + [Y_eol_token]*(maxlen-len(y)) for y in Y_vectors]
+        Y = numpy.array(Y_padded_vectors, dtype=ftype)
+        print 'loaded Y'
+        print Y.nbytes
+        res['Y_emb'] = Y
+
+    if 'Y_tokens' in req:
+        Y_tokens, _ = _load_dataset(embed_src, infile_src, maxlen, reverse=False, convert=False)
+        res['Y_tokens'] = Y_tokens
+
+    if 'maxlen' in req:
+        res['maxlen'] = maxlen
+
+    def sl(v):
+        try:
+            return str(len(v))
+        except TypeError:
+            return 'n/a'
+
+    print 'loaded sets {0} with lengths {1}'.format(', '.join(res.keys()), ', '.join(map(sl, res.itervalues())))
+
+    return res
+
+
 def generate_D_L1_Usage(embed_src, embed_dst, model, X, Y):
     # get regular translations
     R = model.predict_batch(X, batch_size=len(X))

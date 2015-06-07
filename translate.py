@@ -8,7 +8,9 @@ import output_dumps
 
 from datetime import datetime
 from log import log, log_to_file, stat
-from itertools import izip
+from itertools import izip, count
+from fastmatch import FastMatch
+from datetime import datetime
 
 def main():
     # mapping of commands to handlers
@@ -321,25 +323,62 @@ def h_train(cache, args):
     embedding_src = get_embedding(cache, args, 'embedding_src')
     embedding_dst = get_embedding(cache, args, 'embedding_dst')
 
+    sets = {}
+    req = ['X_emb', 'Y_tokens', 'Y_emb', 'M', 'maxlen']
+
     # load train dataset
     train_src = get_required_arg(args, 'train_src')
     train_dst = get_required_arg(args, 'train_dst')
     maxlen = get_required_arg(args, 'maxlen')
 
-    X_train, Y_train, M_train, maxlen = helpers.load_dataset(
+    sets['train'] = helpers.ds_request(req,
             embedding_src, embedding_dst,
             train_src, train_dst,
             maxlen)
+    X_train = sets['train']['X_emb']
+    Y_train = sets['train']['Y_emb']
+    M_train = sets['train']['M']
+
+    #X_train, Y_train, M_train, maxlen = helpers.load_dataset(
+    #        embedding_src, embedding_dst,
+    #        train_src, train_dst,
+    #        maxlen)
+
+    #sets['train'] = {
+    #    'X_tokens': None,
+    #    'X_emb': X_train,
+    #    'Y_tokens': None,
+    #    'Y_emb': Y_train,
+    #    'M': M_train
+    #    'maxlen': maxlen
+    #}
 
     # load validation dataset
     validation_src = get_required_arg(args, 'validation_src')
     validation_dst = get_required_arg(args, 'validation_dst')
     maxlen = get_required_arg(args, 'maxlen')
 
-    X_validation, Y_validation, M_validation, maxlen = helpers.load_dataset(
+    sets['validate'] = helpers.ds_request(req,
             embedding_src, embedding_dst,
             validation_src, validation_dst,
             maxlen)
+    X_validation = sets['validate']['X_emb']
+    Y_validation = sets['validate']['Y_emb']
+    M_validation = sets['validate']['M']
+
+#    X_validation, Y_validation, M_validation, maxlen = helpers.load_dataset(
+#            embedding_src, embedding_dst,
+#            validation_src, validation_dst,
+#            maxlen)
+#
+#    sets['validate'] = {
+#        'X_tokens': None,
+#        'X_emb': X_validation,
+#        'Y_tokens': None,
+#        'Y_emb': Y_validation,
+#        'M': M_validation
+#        'maxlen': maxlen
+#    }
 
     # load model
     modelfile = args.compiled_model
@@ -363,6 +402,13 @@ def h_train(cache, args):
     snapshot_skip = get_required_arg(args, 'snapshot_skip')
     lr_A = get_required_arg(args, 'lr_encoder')
     lr_B = get_required_arg(args, 'lr_decoder')
+
+    # create fast match
+    bs = 8
+    log('begin fastmatch')
+    fm = FastMatch(embedding_dst)
+    fm.compile(batch_size=bs, sentence_length=maxlen)
+    log('done fastmatch')
 
     timer_start = None
 
@@ -398,31 +444,19 @@ def h_train(cache, args):
 
     # end of epoch callback: output stats, take snapshot
     snapshot_prefix = args.output_snapshot_prefix
-    def epoch_callback(sets, epoch):
+    def epoch_callback(round_stats, epoch):
         elapsed = get_elapsed()
 
         log("Begin epoch callback for epoch {0}".format(epoch))
+
         if validation_skip > 0 and (epoch + 1) % validation_skip == 0:
-            from utils import LN
-            L1 = lambda vec, x: -LN(vec, x, n=1)
-
-            #w_raw = helpers.generate_D_L1_Usage(
-            #            embedding_src, embedding_dst, model, sets[0][1], sets[0][2])
-            #DLs = [('normal, L2', None, None),
-            #       ('D_L1_Usage, L2', w_raw, None),
-            #       ('normal, L1', None, L1),
-            #       ('D_L1_Usage, L1', w_raw, L1),
-            #]
-
-            DLs = [('normal, L2', None, None),
-                   ('normal, L1', None, L1),
-            ]
-
-            s = output_dumps.setacc(embedding_src, embedding_dst, model, sets,
-                    epoch, elapsed, min(100, len(X_validation)), DLs)
+            DLs = [('normal, L2', None, fm)]
+            set_dicts = output_dumps.full_stats(round_stats, sets, DLs,
+                    model, sample_size=160, log=lambda *_: None)
         else:
-            set_dicts = {name: {'loss': loss} for name, X, Y, loss in sets}
-            s = {'epoch': epoch, 'time': elapsed, 'sets': set_dicts}
+            set_dicts = round_stats
+
+        s = {'epoch': epoch, 'time': elapsed, 'sets': set_dicts}
 
         stat.info("{0},".format(s))
 
@@ -487,10 +521,6 @@ def h_test(cache, args):
 
     print embedding_dst.embed_matrix.shape
     
-    from fastmatch import FastMatch
-    from itertools import count
-    from datetime import datetime
-
     log('begin fastmatch')
     fm = FastMatch(embedding_dst)
     fm.compile(batch_size=bs, sentence_length=maxlen)

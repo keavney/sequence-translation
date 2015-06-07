@@ -29,7 +29,6 @@ class FastMatch(object):
 
         self.batch_size = mshape[0]
 
-        #kvd = T.matrix()
         kvd = self.kvd
         mat = T.tensor3()
         self.f_match = None
@@ -41,7 +40,6 @@ class FastMatch(object):
         matches = T.argmin(distances, axis=mat.ndim-1)
 
         self.f_match = theano.function([mat], matches, allow_input_downcast=True)
-        #self.f_match = theano.function([kvd, mat], matches, allow_input_downcast=True)
 
         print 'done'
 
@@ -60,7 +58,6 @@ class FastMatch(object):
 
         log('start')
         matches = self.f_match(mat)
-        #matches = self.f_match(self.kv.get_matrix(), mat)
         log('done matches')
         words = [[self.kv.get_index(word) for word in match] for match in matches]
         log('done translation')
