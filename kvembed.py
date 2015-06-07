@@ -63,6 +63,9 @@ class KVEmbed(object):
         '''
         return self.embed_matrix_lookup[i]
 
+    def get_matrix(self):
+        return self.embed_matrix
+
     def eol(self):
         return [0.]*self.embedding_size
 

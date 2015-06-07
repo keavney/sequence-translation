@@ -8,6 +8,7 @@ import output_dumps
 
 from datetime import datetime
 from log import log, log_to_file, stat
+from itertools import izip
 
 def main():
     # mapping of commands to handlers
@@ -16,6 +17,7 @@ def main():
         ('compile',     h_compile),
         ('train',       h_train),
         ('test',        h_test),
+        ('test_old',    h_test_old),
         ('export',      h_export),
         ('interactive', h_interactive),
     ]
@@ -460,6 +462,76 @@ def h_train(cache, args):
 
 
 def h_test(cache, args):
+    # load embeddings
+    embedding_src = get_embedding(cache, args, 'embedding_src')
+    embedding_dst = get_embedding(cache, args, 'embedding_dst')
+
+    # load dataset
+    test_src = get_required_arg(args, 'test_src')
+    test_dst = get_required_arg(args, 'test_dst')
+
+    #maxlen = model.model_B.steps
+    maxlen = get_required_arg(args, 'maxlen')
+
+    log('loading dataset')
+    X, X_words, Y_words, maxlen = helpers.load_dataset_test(
+            embedding_src, embedding_dst,
+            test_src, test_dst,
+            maxlen)
+    log('done loading dataset')
+
+    bs = 8
+
+    print X.shape
+    print X[:bs].shape
+
+    print embedding_dst.embed_matrix.shape
+    
+    from fastmatch import FastMatch
+    from itertools import count
+    from datetime import datetime
+
+    log('begin fastmatch')
+    fm = FastMatch(embedding_dst)
+    fm.compile(batch_size=bs, sentence_length=maxlen)
+    log('done fastmatch')
+
+    # load model
+    log('loading model')
+    model = get_fitted_model(cache, args)
+    log('done loading model')
+
+    c = count()
+    st = datetime.utcnow()
+    log('start: {0}'.format(st))
+
+    R = model.predict_batch(X, batch_size=len(X))
+
+    while len(R):
+        X_words_batch = X_words[:bs]
+        Y_words_batch = Y_words[:bs]
+        R_batch = R[:bs]
+
+        R_t = fm.match(R_batch, log=log)
+        R_clipped = [r[:len(y)] for r, y in izip(R_t, Y_words_batch)]
+
+        for x, y, r in izip(X_words_batch, Y_words_batch, R_clipped):
+            print c.next()
+            print ' '.join(x)
+            print ' '.join(y)
+            print ' '.join(r)
+            print ''
+         
+        X_words = X_words[bs:]
+        Y_words = Y_words[bs:]
+        R = R[bs:]
+
+    fi = datetime.utcnow()
+    log('finish: {0}'.format(fi))
+    log('diff: {0}'.format(fi - st))
+
+
+def h_test_old(cache, args):
     # load model
     model = get_fitted_model(cache, args)
 

@@ -115,29 +115,33 @@ def build_model(layer_size, layer_count, maxlen, start_token, loss, optimizer, c
     return model
 
 
-def load_dataset(embed_src, embed_dst, infile_src, infile_dst, maxlen):
-    def _load_dataset(embed, infile, reverse):
-        with open(infile) as f:
-            raw_lines = f.readlines()
+def _load_dataset(embed, infile, maxlen, reverse=False, convert=True):
+    with open(infile) as f:
+        raw_lines = f.readlines()
 
-        # skip header, if applicable
-        h = raw_lines[0].strip().split(' ')
-        if len(h) == 1 and h[0].isdigit():
-            raw_lines = raw_lines[1:]
-            
-        variable_lines = map(lambda x: x.split(' '), \
-                filter(lambda x: x, [x.strip() for x in raw_lines]))
-        count = len(variable_lines)
-        token_lines = [x[:min(len(x), maxlen)] for x in variable_lines]
+    # skip header, if applicable
+    h = raw_lines[0].strip().split(' ')
+    if len(h) == 1 and h[0].isdigit():
+        raw_lines = raw_lines[1:]
+        
+    variable_lines = map(lambda x: x.split(' '), \
+            filter(lambda x: x, [x.strip() for x in raw_lines]))
+    count = len(variable_lines)
+    token_lines = [x[:min(len(x), maxlen)] for x in variable_lines]
 
+    if convert:
         vectors = [embed.convert_sentence(line, reverse=reverse) for line in token_lines]
-        eol_token = embed.eol()
+    else:
+        vectors = token_lines
+    eol_token = embed.eol()
 
-        return vectors, eol_token
+    return vectors, eol_token
 
+
+def load_dataset(embed_src, embed_dst, infile_src, infile_dst, maxlen):
     # load X, Y
-    vectors_X, eol_token_X = _load_dataset(embed_src, infile_src, True)
-    vectors_Y, eol_token_Y = _load_dataset(embed_dst, infile_dst, False)
+    vectors_X, eol_token_X = _load_dataset(embed_src, infile_src, maxlen, reverse=True)
+    vectors_Y, eol_token_Y = _load_dataset(embed_dst, infile_dst, maxlen, reverse=False)
 
     # create mask from Y vectors
     s = embed_dst.embedding_size
@@ -161,6 +165,24 @@ def load_dataset(embed_src, embed_dst, infile_src, infile_dst, maxlen):
     print 'loaded sets X, Y, M with lengths: {0}, {1}, {2}'.format(len(X), len(Y), len(M))
 
     return X, Y, M, maxlen
+
+
+def load_dataset_test(embed_src, embed_dst, infile_src, infile_dst, maxlen):
+    X_vectors, X_eol_token = _load_dataset(embed_src, infile_src, maxlen, reverse=True)
+    X_words, _ = _load_dataset(embed_src, infile_src, maxlen, reverse=True, convert=False)
+    Y_words, _ = _load_dataset(embed_dst, infile_dst, maxlen, reverse=False, convert=False)
+
+    # pad X with EOL tokens
+    X_vectors = [[X_eol_token]*(maxlen-len(x)) + x for x in X_vectors]
+
+    # convert X to array (Y is only used here as a word label)
+    X = numpy.array(X_vectors, dtype=ftype)
+    print 'loaded X'
+    print X.nbytes
+
+    print 'loaded sets X, X_words, Y_words with lengths: {0}, {1}, {2}'.format(len(X), len(X_words), len(Y_words))
+
+    return X, X_words, Y_words, maxlen
 
 
 def generate_D_L1_Usage(embed_src, embed_dst, model, X, Y):
