@@ -10,9 +10,10 @@ if len(sys.argv) < 4:
 
 colors = cycle(['r', 'b', 'g', 'k', 'c', 'm', 'y'])
 sets = [('train', '-'), ('validate', '--')]
-maxval = 1e10
+cap = 1e10
+#cap = 5e-5
 m = 1
-convert = lambda x: min(float(x*m), maxval)
+convert = lambda x: min(float(x*m), cap)
 showmax = False
 showmin = False
 

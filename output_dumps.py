@@ -11,15 +11,20 @@ def realtest(embed_src, embed_dst, model, X, Y):
     X_translations = [embed_src.match_sentence(list(reversed(x))) for x in X]
     Y_translations = [embed_dst.match_sentence(y) for y in Y]
     R = model.predict_batch(X, batch_size=len(X))
-    R_translations = [embed_dst.match_sentence(r) for r in R]
+    #R_translations = [embed_dst.match_sentence(r) for r in R]
+    R_translations = [[embed_dst.matchN(word, 10) for word in r] for r in R]
     i = 0
-    for x, y, r in izip(X_translations, Y_translations, R_translations):
+    for x, y, r, r_w in izip(X_translations, Y_translations, R_translations, R):
         print '=[ {0} ]================================='.format(i)
+        print 'input: ', ' '.join(x)
+        print 'label: ', ' '.join(y)
+        print 'output:', ' '.join([w[0][0] for w in r])
         print 'input: ', x
         print 'label: ', y
-        print 'output:', r
         for o in r:
             print o
+        print list(r_w)
+        exit()
         i += 1
 
     return R_translations
@@ -209,6 +214,10 @@ def full_stats(round_stats, sets, DLs, model, sample_size=None, batch_size=8, lo
             correct = [sum((yy == rr for yy, rr in izip(y, r))) for y, r \
                     in izip(Y_tokens_batch, R_tokens_batch)]
             correct_pct = [c / float(len(y)) for c, y in izip(correct, Y_tokens_batch)]
+            print Y_tokens_batch
+            print R_tokens_batch
+            print correct
+            print correct_pct
 
             correct_pct_total += sum(correct_pct)
             correct_pct_size += len(correct_pct)
