@@ -86,6 +86,9 @@ def main():
     parser.add_argument('--lr-both', dest='lr_both', type=float,
             default=None,
             help="Learning rate for both")
+    parser.add_argument('--epoch-start', dest='epoch_start', type=int,
+            default=0,
+            help="Starting epoch")
 
     # trianing thresholds
     parser.add_argument('--epochs', dest='epochs', type=int,
@@ -393,8 +396,10 @@ def h_train(cache, args):
     # load weights (if applicable)
     input_weights = args.model_weights
     if input_weights is not None:
+        log('loading weights')
         weights = helpers.import_weights(input_weights)
         model.set_weights(weights)
+        log('done')
 
     # train model
     batch_size = get_required_arg(args, 'batch_size')
@@ -402,6 +407,7 @@ def h_train(cache, args):
     snapshot_skip = get_required_arg(args, 'snapshot_skip')
     lr_A = get_required_arg(args, 'lr_encoder')
     lr_B = get_required_arg(args, 'lr_decoder')
+    epoch_start = get_required_arg(args, 'epoch_start')
 
     # create fast match
     bs = 8
@@ -478,6 +484,7 @@ def h_train(cache, args):
             lr_A=lr_A, lr_B=lr_B,
             batch_size=batch_size,
             verbose=1, shuffle=True,
+            epoch_start=epoch_start,
             continue_training=continue_training,
             epoch_callback=epoch_callback
     )
@@ -584,29 +591,9 @@ def h_test_old(cache, args):
     test_format = args.test_format.lower()
     print test_format
 
+    output_dumps.realtest(embedding_src, embedding_dst, model, X, Y)
+    return
 
-    ## generate DLs from training corpus (todo: make this part of the model)
-    #train_src = get_required_arg(args, 'train_src')
-    #train_dst = get_required_arg(args, 'train_dst')
-    #X_t, Y_t, M_t, maxlen_t = helpers.load_dataset(
-    #        embedding_src, embedding_dst,
-    #        train_src, train_dst,
-    #        maxlen)
-
-    DLs = []
-    DLs.append(('normal', None))
-
-    #print 'generate D_L1_Usage'
-    #D_L1_Usage = helpers.generate_D_L1_Usage(embedding_src, embedding_dst, model, X_t, Y_t)
-    #print 'D_L1_Usage', D_L1_Usage
-    #DLs.append(('D_L1_Usage', D_L1_Usage))
-
-    print 'done DLs'
-
-    output_dumps.nptest_dict(embedding_src, embedding_dst, model, X, Y, M, DLs)
-
-    for DL in DLs:
-        print DL
 
 def h_export(cache, args):
     # load model

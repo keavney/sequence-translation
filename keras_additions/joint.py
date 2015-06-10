@@ -183,6 +183,7 @@ class JointModel(object):
             lr_A=None, lr_B=None,
             batch_size=128,
             verbose=1, shuffle=True,
+            epoch_start=0,
             continue_training=lambda *_: True,
             epoch_callback=lambda *_: None):
 
@@ -197,7 +198,7 @@ class JointModel(object):
                 print "epoch callback: {0}".format("yes" if epoch_callback else "no")
         
         index_array = numpy.arange(len(X))
-        epoch = 0
+        epoch = epoch_start
         callback_result = None
         while continue_training(epoch, callback_result):
             if verbose:
