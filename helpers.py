@@ -200,7 +200,7 @@ def ds_request(req, embed_src, embed_dst, infile_src, infile_dst, maxlen):
         res['X_tokens'] = X_tokens
 
     if 'Y_emb' in req:
-        Y_vectors, Y_eol_token = _load_dataset(embed_src, infile_src, maxlen, reverse=False)
+        Y_vectors, Y_eol_token = _load_dataset(embed_dst, infile_dst, maxlen, reverse=False)
 
         if 'M' in req:
             # create mask from Y vectors
@@ -218,7 +218,7 @@ def ds_request(req, embed_src, embed_dst, infile_src, infile_dst, maxlen):
         res['Y_emb'] = Y
 
     if 'Y_tokens' in req:
-        Y_tokens, _ = _load_dataset(embed_src, infile_src, maxlen, reverse=False, convert=False)
+        Y_tokens, _ = _load_dataset(embed_dst, infile_dst, maxlen, reverse=False, convert=False)
         res['Y_tokens'] = Y_tokens
 
     if 'maxlen' in req:
