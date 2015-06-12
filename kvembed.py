@@ -37,6 +37,9 @@ class KVEmbed(object):
         self.eol_tokens = [(self.end_token, False)] + eol_tokens
 
         #self.default_metric = lambda vec, x: -LN(vec, x, n=2)
+
+        self.start = one_hot(self.word_count, self.word_to_int[self.start_token])
+        self.end = one_hot(self.word_count, self.word_to_int[self.end_token])
     
     def get(self, token):
         '''
@@ -53,12 +56,6 @@ class KVEmbed(object):
         '''
         return self.int_to_word[i]
 
-    def start(self):
-        return one_hot(self.word_count, self.word_to_int[self.start_token])
-
-    def end(self):
-        return one_hot(self.word_count, self.word_to_int[self.end_token])
-
     def clip(self, sentence):
         '''
             Clips sentence at first occurrence of an eol token.
@@ -73,8 +70,10 @@ class KVEmbed(object):
         return sentence
 
     # used to be convert_sentence
-    def sentence_to_1h(self, tokens, reverse=False):
+    def sentence_to_1h(self, tokens, reverse=False, pad_length=None):
         vectors = [self.get(x) for x in tokens]
+        if pad_length:
+            vectors += [self.end]*(pad_length-len(vectors))
         if reverse:
             vectors = list(reversed(tokens))
         return vectors

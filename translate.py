@@ -337,7 +337,7 @@ def h_train(cache, args):
     train_dst = get_required_arg(args, 'train_dst')
     maxlen = get_required_arg(args, 'maxlen')
 
-    sets['train'] = helpers.ds_request(req,
+    sets['train'] = helpers.load_datasets(req,
             embedding_src, embedding_dst,
             train_src, train_dst,
             maxlen)
@@ -364,7 +364,7 @@ def h_train(cache, args):
     validation_dst = get_required_arg(args, 'validation_dst')
     maxlen = get_required_arg(args, 'maxlen')
 
-    sets['validate'] = helpers.ds_request(req,
+    sets['validate'] = helpers.load_datasets(req,
             embedding_src, embedding_dst,
             validation_src, validation_dst,
             maxlen)

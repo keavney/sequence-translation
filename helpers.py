@@ -120,7 +120,7 @@ def build_model(layer_size, layer_count, wc_src, wc_dst, maxlen, start_token, lo
     return model
 
 
-def _load_dataset(embed, infile, maxlen, reverse=False, convert=True):
+def _load_dataset_vectors(embed, infile, maxlen, reverse=False):
     with open(infile) as f:
         raw_lines = f.readlines()
 
@@ -134,83 +134,57 @@ def _load_dataset(embed, infile, maxlen, reverse=False, convert=True):
     count = len(variable_lines)
     token_lines = [x[:min(len(x), maxlen)] for x in variable_lines]
 
-    if convert:
-        vectors = [embed.convert_sentence(line, reverse=reverse) for line in token_lines]
-    else:
-        vectors = token_lines
-    eol_token = embed.eol()
+    vectors = numpy.zeros((len(token_lines), maxlen, embed.word_count))
+    for i, line in enumerate(token_lines):
+        vectors[i] = array(embed.sentence_to_1h(line, reverse=reverse, pad_length=maxlen))
 
-    return vectors, eol_token
+    return vectors
+
+
+def _load_dataset_tokens(embed, infile, maxlen, reverse=False):
+    with open(infile) as f:
+        raw_lines = f.readlines()
+
+    # skip header, if applicable
+    h = raw_lines[0].strip().split(' ')
+    if len(h) == 1 and h[0].isdigit():
+        raw_lines = raw_lines[1:]
+        
+    variable_lines = map(lambda x: x.split(' '), \
+            filter(lambda x: x, [x.strip() for x in raw_lines]))
+    token_lines = [x[:min(len(x), maxlen)] for x in variable_lines]
+
+    return token_lines
 
 
 def load_dataset(embed_src, embed_dst, infile_src, infile_dst, maxlen):
-    # load X, Y
-    vectors_X, eol_token_X = _load_dataset(embed_src, infile_src, maxlen, reverse=True)
-    vectors_Y, eol_token_Y = _load_dataset(embed_dst, infile_dst, maxlen, reverse=False)
-
-    # create mask from Y vectors
-    s = embed_dst.embedding_size
-    mask = [[[1.]*s]*len(y) + [[0.]*s]*(maxlen-len(y)) for y in vectors_Y]
-
-    # pad X and Y vectors with EOL tokens (AFTER the mask has been created)
-    vectors_X = [[eol_token_X]*(maxlen-len(x)) + x for x in vectors_X]
-    vectors_Y = [x + [eol_token_Y]*(maxlen-len(x)) for x in vectors_Y]
-
-    # convert to array
-    X = numpy.array(vectors_X, dtype=ftype)
-    print 'loaded X'
-    print X.nbytes
-    Y = numpy.array(vectors_Y, dtype=ftype)
-    print 'loaded Y'
-    print Y.nbytes
-    M = numpy.array(mask, dtype=ftype)
-    print 'loaded M'
-    print M.nbytes
-
-    print 'loaded sets X, Y, M with lengths: {0}, {1}, {2}'.format(len(X), len(Y), len(M))
-
-    return X, Y, M, maxlen
+    raise NotImplementedError("load_dataset: deprecated")
 
 
 def load_dataset_test(embed_src, embed_dst, infile_src, infile_dst, maxlen):
-    X_vectors, X_eol_token = _load_dataset(embed_src, infile_src, maxlen, reverse=True)
-    X_words, _ = _load_dataset(embed_src, infile_src, maxlen, reverse=True, convert=False)
-    Y_words, _ = _load_dataset(embed_dst, infile_dst, maxlen, reverse=False, convert=False)
-
-    # pad X with EOL tokens
-    X_vectors = [[X_eol_token]*(maxlen-len(x)) + x for x in X_vectors]
-
-    # convert X to array (Y is only used here as a word label)
-    X = numpy.array(X_vectors, dtype=ftype)
-    print 'loaded X'
-    print X.nbytes
-
-    print 'loaded sets X, X_words, Y_words with lengths: {0}, {1}, {2}'.format(len(X), len(X_words), len(Y_words))
-
-    return X, X_words, Y_words, maxlen
+    raise NotImplementedError("load_dataset_test: deprecated")
 
 
-def ds_request(req, embed_src, embed_dst, infile_src, infile_dst, maxlen):
+def load_datasets(req, embed_src, embed_dst, infile_src, infile_dst, maxlen):
     res = {}
     if 'X_emb' in req:
-        X_vectors, X_eol_token = _load_dataset(embed_src, infile_src, maxlen, reverse=True)
-        X_padded_vectors = [[X_eol_token]*(maxlen-len(x)) + x for x in X_vectors]
-        X = numpy.array(X_padded_vectors, dtype=ftype)
+        X_vectors = _load_dataset(embed_src, infile_src, maxlen, reverse=True)
         print 'loaded X'
         print X.nbytes
         res['X_emb'] = X
     
     if 'X_tokens' in req:
-        X_tokens, _ = _load_dataset(embed_src, infile_src, maxlen, reverse=True, convert=False)
+        X_tokens = _load_dataset_tokens(embed_src, infile_src, maxlen, reverse=True)
         res['X_tokens'] = X_tokens
 
     if 'Y_emb' in req:
-        Y_vectors, Y_eol_token = _load_dataset(embed_dst, infile_dst, maxlen, reverse=False)
+        Y_vectors = _load_dataset(embed_dst, infile_dst, maxlen, reverse=False)
 
         if 'M' in req:
             # create mask from Y vectors
             s = embed_dst.embedding_size
-            mask = [[[1.]*s]*len(y) + [[0.]*s]*(maxlen-len(y)) for y in Y_vectors]
+            e = embed_dst.end
+            mask = [[[int((v == e).all())]*s for v in y] for y in Y_vectors]
             M = numpy.array(mask, dtype=ftype)
             print 'loaded M'
             print M.nbytes
@@ -223,7 +197,7 @@ def ds_request(req, embed_src, embed_dst, infile_src, infile_dst, maxlen):
         res['Y_emb'] = Y
 
     if 'Y_tokens' in req:
-        Y_tokens, _ = _load_dataset(embed_dst, infile_dst, maxlen, reverse=False, convert=False)
+        Y_tokens = _load_dataset_tokens(embed_dst, infile_dst, maxlen, reverse=False)
         res['Y_tokens'] = Y_tokens
 
     if 'maxlen' in req:
