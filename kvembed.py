@@ -75,12 +75,12 @@ class KVEmbed(object):
         if pad_length:
             vectors += [self.end]*(pad_length-len(vectors))
         if reverse:
-            vectors = list(reversed(tokens))
+            vectors = list(reversed(vectors))
         return vectors
 
     # used to be match_sentence
     def vectors_to_sentence(self, vectors, clip=True):
-        tokens = [self.int_to_word(max(v)) for v in vectors]
+        tokens = [self.int_to_word[numpy.argmax(v)] for v in vectors]
         if clip:
             tokens = self.clip(tokens)
         return tokens
@@ -93,7 +93,7 @@ class KVEmbed(object):
         if len(vec) != self.word_count:
             raise Exception("matchN: invalid input: expected vector of length {0} (received length {1})".format(self.word_count, len(vec)))
 
-        matches = [(self.int_to_word(i), i, prob) for i, prob in sorted(enumerate(vector), key=lambda (i, prob): prob, reverse=True)[:n]]
+        matches = [(self.int_to_word[i], i, prob) for i, prob in sorted(enumerate(vector), key=lambda (i, prob): prob, reverse=True)[:n]]
         return tokens
 
     def get_matrix(self, *args, **kwargs):

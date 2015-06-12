@@ -182,7 +182,8 @@ def full_stats(round_stats, sets, DLs, model, sample_size=None, batch_size=8, lo
     if len(DLs) != 1:
         raise Exception("len(DLs) != 1 (only normal, L2 is supported)")
     DL = DLs[0]
-    fm = DL[2]
+    #fm = DL[2]
+    emb = DL[2]
 
     stats = round_stats
 
@@ -199,7 +200,8 @@ def full_stats(round_stats, sets, DLs, model, sample_size=None, batch_size=8, lo
             Y_tokens = [Y_tokens[i] for i in indices]
 
         R_emb = model.predict_batch(X_emb)
-        bs = fm.batch_size
+        #bs = fm.batch_size
+        bs = 8
         R_tokens = []
 
         correct_pct_total = 0
@@ -209,11 +211,13 @@ def full_stats(round_stats, sets, DLs, model, sample_size=None, batch_size=8, lo
             Y_tokens_batch = Y_tokens[:bs]
             R_emb_batch = R_emb[:bs]
 
-            R_tokens_batch = fm.match(R_emb_batch, log=log)
+            #R_tokens_batch = fm.match(R_emb_batch, log=log)
+            R_tokens_batch = [emb.vectors_to_sentence(r) for r in R_emb_batch]
 
             correct = [sum((yy == rr for yy, rr in izip(y, r))) for y, r \
                     in izip(Y_tokens_batch, R_tokens_batch)]
             correct_pct = [c / float(len(y)) for c, y in izip(correct, Y_tokens_batch)]
+            print R_emb
             print Y_tokens_batch
             print R_tokens_batch
             print correct

@@ -120,7 +120,7 @@ def build_model(layer_size, layer_count, wc_src, wc_dst, maxlen, start_token, lo
     return model
 
 
-def _load_dataset_vectors(embed, infile, maxlen, reverse=False):
+def _load_dataset(embed, infile, maxlen, reverse=False):
     with open(infile) as f:
         raw_lines = f.readlines()
 
@@ -136,7 +136,7 @@ def _load_dataset_vectors(embed, infile, maxlen, reverse=False):
 
     vectors = numpy.zeros((len(token_lines), maxlen, embed.word_count))
     for i, line in enumerate(token_lines):
-        vectors[i] = array(embed.sentence_to_1h(line, reverse=reverse, pad_length=maxlen))
+        vectors[i] = numpy.array(embed.sentence_to_1h(line, reverse=reverse, pad_length=maxlen))
 
     return vectors
 
@@ -170,8 +170,8 @@ def load_datasets(req, embed_src, embed_dst, infile_src, infile_dst, maxlen):
     if 'X_emb' in req:
         X_vectors = _load_dataset(embed_src, infile_src, maxlen, reverse=True)
         print 'loaded X'
-        print X.nbytes
-        res['X_emb'] = X
+        print X_vectors.nbytes
+        res['X_emb'] = X_vectors
     
     if 'X_tokens' in req:
         X_tokens = _load_dataset_tokens(embed_src, infile_src, maxlen, reverse=True)
@@ -182,7 +182,7 @@ def load_datasets(req, embed_src, embed_dst, infile_src, infile_dst, maxlen):
 
         if 'M' in req:
             # create mask from Y vectors
-            s = embed_dst.embedding_size
+            s = embed_dst.word_count
             e = embed_dst.end
             mask = [[[int((v == e).all())]*s for v in y] for y in Y_vectors]
             M = numpy.array(mask, dtype=ftype)
@@ -190,11 +190,9 @@ def load_datasets(req, embed_src, embed_dst, infile_src, infile_dst, maxlen):
             print M.nbytes
             res['M'] = M
 
-        Y_padded_vectors = [y + [Y_eol_token]*(maxlen-len(y)) for y in Y_vectors]
-        Y = numpy.array(Y_padded_vectors, dtype=ftype)
         print 'loaded Y'
-        print Y.nbytes
-        res['Y_emb'] = Y
+        print Y_vectors.nbytes
+        res['Y_emb'] = Y_vectors
 
     if 'Y_tokens' in req:
         Y_tokens = _load_dataset_tokens(embed_dst, infile_dst, maxlen, reverse=False)

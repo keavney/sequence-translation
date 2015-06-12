@@ -9,7 +9,7 @@ import output_dumps
 from datetime import datetime
 from log import log, log_to_file, stat
 from itertools import izip, count
-from fastmatch import FastMatch
+#from fastmatch import FastMatch
 from datetime import datetime
 
 def main():
@@ -303,8 +303,8 @@ def h_compile(cache, args):
     maxlen = get_required_arg(args, 'maxlen')
     compile_train = bool(eval(get_required_arg(args, 'compile_train')))
 
-    wc_src = 500
-    wc_dst = 500
+    wc_src = 1484
+    wc_dst = 1374
 
     start_token=None 
     loss='mean_squared_error'
@@ -412,12 +412,12 @@ def h_train(cache, args):
     lr_B = get_required_arg(args, 'lr_decoder')
     epoch_start = get_required_arg(args, 'epoch_start')
 
-    # create fast match
-    bs = 8
-    log('begin fastmatch')
-    fm = FastMatch(embedding_dst)
-    fm.compile(batch_size=bs, sentence_length=maxlen)
-    log('done fastmatch')
+    # # create fast match
+    # bs = 8
+    # log('begin fastmatch')
+    # fm = FastMatch(embedding_dst)
+    # fm.compile(batch_size=bs, sentence_length=maxlen)
+    # log('done fastmatch')
 
     timer_start = None
 
@@ -459,7 +459,8 @@ def h_train(cache, args):
         log("Begin epoch callback for epoch {0}".format(epoch))
 
         if validation_skip > 0 and (epoch + 1) % validation_skip == 0:
-            DLs = [('normal, L2', None, fm)]
+            #DLs = [('normal, L2', None, fm)]
+            DLs = [('normal, L2', None, embedding_dst)]
             set_dicts = output_dumps.full_stats(round_stats, sets, DLs,
                     model, sample_size=160, log=lambda *_: None)
         else:
@@ -478,6 +479,8 @@ def h_train(cache, args):
 
         log("End epoch callback for epoch {0}".format(epoch))
         return s
+
+    model.X1 = [[embedding_dst.start]]
 
     log("Training model...")
     timer_start = datetime.utcnow()
