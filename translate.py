@@ -432,10 +432,10 @@ def h_train(cache, args):
     # policy evaluated at beginning of each epoch:
     # stop training if any thresholds are met
     def continue_training(epoch, callback_result):
-        def check_threshold_lt(left, right):
-            return left is not None and right is not None and left < right
-        def check_threshold_gt(left, right):
-            return left is not None and right is not None and left > right
+        def check_threshold_lte(left, right):
+            return left is not None and right is not None and left <= right
+        def check_threshold_gte(left, right):
+            return left is not None and right is not None and left >= right
         def dg(l):
             try:
                 return l()
@@ -444,16 +444,16 @@ def h_train(cache, args):
             except TypeError:
                 return None
 
-        loss      = dg(lambda: callback_result['sets']['train']['loss'])
-        val_loss  = dg(lambda: callback_result['sets']['validate']['loss'])
-        error     = dg(lambda: 1 - callback_result['sets']['train']['summary']['normal, L2']['avg_correct_pct'])
-        val_error = dg(lambda: 1 - callback_result['sets']['validate']['summary']['normal, L2']['avg_correct_pct'])
+        loss      = dg(lambda: callback_resulte['sets']['train']['loss'])
+        val_loss  = dg(lambda: callback_resulte['sets']['validate']['loss'])
+        error     = dg(lambda: 1 - callback_resulte['sets']['train']['summary']['normal, L2']['avg_correct_pct'])
+        val_error = dg(lambda: 1 - callback_resulte['sets']['validate']['summary']['normal, L2']['avg_correct_pct'])
 
         return not (
-            check_threshold_gt(epoch, args.epochs) or \
-            check_threshold_gt(get_elapsed(), args.seconds) or \
-            (check_threshold_lt(loss, args.loss) and check_threshold_lt(val_loss, args.loss)) or \
-            (check_threshold_lt(error, args.error) and check_threshold_lt(val_error, args.error))
+            check_threshold_gte(epoch, args.epochs) or \
+            check_threshold_gte(get_elapsed(), args.seconds) or \
+            (check_threshold_lte(loss, args.loss) and check_threshold_lte(val_loss, args.loss)) or \
+            (check_threshold_lte(error, args.error) and check_threshold_lte(val_error, args.error))
         )
 
     # end of epoch callback: output stats, take snapshot
