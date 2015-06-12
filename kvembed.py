@@ -10,22 +10,19 @@ class KVEmbed(object):
 
     '''
 
-    default_rep = lambda x: numpy.array(x, dtype=ftype)
-
     invalid_token = "<<INVALID>>"
     start_token   = "<<START>>"
     end_token     = "<<END>>"
 
-    def __init__(self, infile, representation=default_rep, eol_tokens=None):
+    def __init__(self, infile, eol_tokens=None, min_count=1):
         '''
-            Create KV embed from a file.
-            The keyword arg "representation" is used to cast input arguments
-            (by default, as numpy arrays)
+            Create KV embed from a tokenized (space-separated) file of sentences.
 
         '''
         with open(infile) as f:
-            header = f.readline().strip()
-            words = [line.strip().split(' ')[0] for line in f if ' ' in line.strip()]
+            c = Counter(chain(*(line.strip().split(' ') for line in f)))
+
+        words = [word for word, count in c.iteritems() if count >= min_count]
 
         alltokens = [self.invalid_token, self.start_token, self.end_token] + words
 
@@ -34,9 +31,8 @@ class KVEmbed(object):
         self.word_to_int = {word: i for i, word in enumerate(alltokens)}
         self.int_to_word = {i: word for i, word in enumerate(alltokens)}
 
-        self.eol_tokens = [(self.end_token, False)] + eol_tokens
-
-        #self.default_metric = lambda vec, x: -LN(vec, x, n=2)
+        if eol_tokens is not None:
+            self.eol_tokens = [(self.end_token, False)] + eol_tokens
 
         self.start = one_hot(self.word_count, self.word_to_int[self.start_token])
         self.end = one_hot(self.word_count, self.word_to_int[self.end_token])

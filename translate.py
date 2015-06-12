@@ -9,7 +9,6 @@ import output_dumps
 from datetime import datetime
 from log import log, log_to_file, stat
 from itertools import izip, count
-#from fastmatch import FastMatch
 from datetime import datetime
 
 def main():
@@ -25,11 +24,11 @@ def main():
     ]
 
     # create parser
-    parser = argparse.ArgumentParser(description="LSTM Encoder Decoder",
+    parser = argparse.ArgumentParser(description="RNN Encoder Decoder",
             fromfile_prefix_chars='@')
     
     # global
-    helpstr = "List of commands: " + ', '.join([x[0] for x in valid_commands])
+    helpstr = "List of commands: " + ', '.join([name for name, handler in valid_commands])
     parser.add_argument('commands', type=str, nargs='+',
             help=helpstr)
 
@@ -185,13 +184,13 @@ def main():
     
     # check that all commands are valid before executing
     for command in commands:
-        if command not in map(lambda x: x[0], valid_commands):
+        if command not in map(lambda (name, handler): name, valid_commands):
             log("Parsed invalid command {0}: exiting".format(command))
             exit()
     
     # execute commands in order
     for command in commands:
-        actions = filter(lambda x: x[0] == command, valid_commands)
+        actions = filter(lambda (name, handler): name == command, valid_commands)
         for name, handler in actions:
             log("Entering command: {0}".format(name))
             handler(cache, args)
@@ -246,58 +245,12 @@ def get_fitted_model(cache, args):
 
 # command handlers
 # (TODO: create list of arg dependencies)
+
 def h_create(cache, args):
-    e = 'word2vec'
-
-    # check for exec existance
-    try:
-        subprocess.check_call('{0} > /dev/null 2>&1'.format(e), shell=True)
-    except subprocess.CalledProcessError:
-        print "Error in create: couldn't call process {0}: exiting".format(e)
-        exit()
-    except OSError:
-        print "Executable {0} not found in path: exiting".format(e)
-        exit()
-
-    # get args
-    infile_src = get_required_arg(args, 'train_src')
-    infile_dst = get_required_arg(args, 'train_dst')
-    outfile_src = get_required_arg(args, 'output_embedding_src')
-    outfile_dst = get_required_arg(args, 'output_embedding_dst')
-    embedding_size = get_required_arg(args, 'embedding_size')
-
-    # call process
-    def s_call(inf, outf):
-        call_args = [
-                '-train',     inf,
-                '-output',    outf,
-                '-cbow',      '1', 
-                '-size',      str(embedding_size),
-                '-window',    '8',
-                '-binary',    '0',
-                '-iter',      '15',
-                '-min-count', '1',
-        ]
-        subprocess.call([e] + call_args)
-
-    # create embeddings
-    log("Creating input embedding...")
-    s_call(infile_src, outfile_src)
-    args.embedding_src = outfile_src
-
-    log("Creating output embedding...")
-    if infile_src != infile_dst:
-        s_call(infile_dst, outfile_dst)
-        args.embedding_dst = outfile_dst
-    else:
-        args.embedding_dst = outfile_src
-
-    log("Done creating embeddings")
+    raise NotImplementedError("deprecated: pass in the name of your training set to embedding_[src|dst] and remove the create command")
 
 
 def h_compile(cache, args):
-    # TODO: automatic dimension reading
-
     layer_size = get_required_arg(args, 'embedding_size')
     layer_count = get_required_arg(args, 'layer_count')
     maxlen = get_required_arg(args, 'maxlen')
@@ -350,20 +303,6 @@ def h_train(cache, args):
     Y_train = sets['train']['Y_emb']
     M_train = sets['train']['M']
 
-    #X_train, Y_train, M_train, maxlen = helpers.load_dataset(
-    #        embedding_src, embedding_dst,
-    #        train_src, train_dst,
-    #        maxlen)
-
-    #sets['train'] = {
-    #    'X_tokens': None,
-    #    'X_emb': X_train,
-    #    'Y_tokens': None,
-    #    'Y_emb': Y_train,
-    #    'M': M_train
-    #    'maxlen': maxlen
-    #}
-
     # load validation dataset
     validation_src = get_required_arg(args, 'validation_src')
     validation_dst = get_required_arg(args, 'validation_dst')
@@ -376,20 +315,6 @@ def h_train(cache, args):
     X_validation = sets['validate']['X_emb']
     Y_validation = sets['validate']['Y_emb']
     M_validation = sets['validate']['M']
-
-#    X_validation, Y_validation, M_validation, maxlen = helpers.load_dataset(
-#            embedding_src, embedding_dst,
-#            validation_src, validation_dst,
-#            maxlen)
-#
-#    sets['validate'] = {
-#        'X_tokens': None,
-#        'X_emb': X_validation,
-#        'Y_tokens': None,
-#        'Y_emb': Y_validation,
-#        'M': M_validation
-#        'maxlen': maxlen
-#    }
 
     # load model
     modelfile = args.compiled_model
@@ -417,13 +342,6 @@ def h_train(cache, args):
     lr_B = get_required_arg(args, 'lr_decoder')
     epoch_start = get_required_arg(args, 'epoch_start')
 
-    # # create fast match
-    # bs = 8
-    # log('begin fastmatch')
-    # fm = FastMatch(embedding_dst)
-    # fm.compile(batch_size=bs, sentence_length=maxlen)
-    # log('done fastmatch')
-
     timer_start = None
 
     def get_elapsed():
@@ -432,11 +350,11 @@ def h_train(cache, args):
     # policy evaluated at beginning of each epoch:
     # stop training if any thresholds are met
     def continue_training(epoch, callback_result):
-        def check_threshold_lte(left, right):
+        def check_lte(left, right):
             return left is not None and right is not None and left <= right
-        def check_threshold_gte(left, right):
+        def check_gte(left, right):
             return left is not None and right is not None and left >= right
-        def dg(l):
+        def dict_or_None(l):
             try:
                 return l()
             except KeyError:
@@ -444,16 +362,16 @@ def h_train(cache, args):
             except TypeError:
                 return None
 
-        loss      = dg(lambda: callback_resulte['sets']['train']['loss'])
-        val_loss  = dg(lambda: callback_resulte['sets']['validate']['loss'])
-        error     = dg(lambda: 1 - callback_resulte['sets']['train']['summary']['normal, L2']['avg_correct_pct'])
-        val_error = dg(lambda: 1 - callback_resulte['sets']['validate']['summary']['normal, L2']['avg_correct_pct'])
+        loss      = dict_or_None(lambda: callback_result['sets']['train']['loss'])
+        val_loss  = dict_or_None(lambda: callback_result['sets']['validate']['loss'])
+        error     = dict_or_None(lambda: 1 - callback_result['sets']['train']['summary']['normal, L2']['avg_correct_pct'])
+        val_error = dict_or_None(lambda: 1 - callback_result['sets']['validate']['summary']['normal, L2']['avg_correct_pct'])
 
         return not (
-            check_threshold_gte(epoch, args.epochs) or \
-            check_threshold_gte(get_elapsed(), args.seconds) or \
-            (check_threshold_lte(loss, args.loss) and check_threshold_lte(val_loss, args.loss)) or \
-            (check_threshold_lte(error, args.error) and check_threshold_lte(val_error, args.error))
+            check_gte(epoch, args.epochs) or \
+            check_gte(get_elapsed(), args.seconds) or \
+            (check_lte(loss, args.loss) and check_lte(val_loss, args.loss)) or \
+            (check_lte(error, args.error) and check_lte(val_error, args.error))
         )
 
     # end of epoch callback: output stats, take snapshot
@@ -464,7 +382,6 @@ def h_train(cache, args):
         log("Begin epoch callback for epoch {0}".format(epoch))
 
         if validation_skip > 0 and (epoch + 1) % validation_skip == 0:
-            #DLs = [('normal, L2', None, fm)]
             DLs = [('normal, L2', None, embedding_dst)]
             set_dicts = output_dumps.full_stats(round_stats, sets, DLs,
                     model, sample_size=160, log=lambda *_: None)
@@ -514,6 +431,8 @@ def h_train(cache, args):
 
 
 def h_test(cache, args):
+    raise Exception("Not currently working")
+
     # load embeddings
     embedding_src = get_embedding(cache, args, 'embedding_src')
     embedding_dst = get_embedding(cache, args, 'embedding_dst')
@@ -539,11 +458,6 @@ def h_test(cache, args):
 
     print embedding_dst.embed_matrix.shape
     
-    log('begin fastmatch')
-    fm = FastMatch(embedding_dst)
-    fm.compile(batch_size=bs, sentence_length=maxlen)
-    log('done fastmatch')
-
     # load model
     log('loading model')
     model = get_fitted_model(cache, args)
@@ -580,6 +494,8 @@ def h_test(cache, args):
 
 
 def h_test_old(cache, args):
+    raise Exception("Not currently working")
+
     # load model
     model = get_fitted_model(cache, args)
 
@@ -607,6 +523,9 @@ def h_test_old(cache, args):
 
 
 def h_export(cache, args):
+    raise Warning("Not tested with new model type - some parameters may be omitted")
+    raise Warning("Currently does not export variable model params such as adagrad weights, etc")
+
     # load model
     model = get_fitted_model(cache, args)
 
@@ -617,6 +536,8 @@ def h_export(cache, args):
 
 
 def h_interactive(cache, args):
+    raise Exception("Not currently working")
+
     # load model
     model = get_fitted_model(cache, args)
 

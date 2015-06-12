@@ -86,20 +86,15 @@ def export_weights(model, filename):
         print "Error in export_weights: could not export weights"
         print traceback.format_exc()
 
-def create_embed(input_file):
+def create_embed(input_file, min_count=1):
     log("creating kv embed")
-    #eol = [('.', True), ('!', True), ('?', True)]
-    eol = []
-    embed = KVEmbed(input_file, eol_tokens=eol)
+    embed = KVEmbed(input_file, min_count=min_count)
     log("done")
     return embed
 
 
 def build_model(layer_size, layer_count, wc_src, wc_dst, maxlen, start_token, loss, optimizer, compile_train):
     log('Building model...')
-
-    #primer_v = numpy.zeros(wc_dst, dtype=ftype)
-    #primer_v[0] = 1.
     
     model_A = SequentialSequence()
     model_A.add(MemDense(wc_src, layer_size))
@@ -113,7 +108,6 @@ def build_model(layer_size, layer_count, wc_src, wc_dst, maxlen, start_token, lo
     model_B.add(FlatDense(layer_size, wc_dst, activation=softmaxN))
     
     model = JointModel(model_A, model_B)
-    #model.X1 = [[primer_v]]
     
     log("Compiling model...")
     model.compile(loss=loss, optimizer=optimizer, log_fcn=log, compile_train=compile_train)
