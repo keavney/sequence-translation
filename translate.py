@@ -303,14 +303,12 @@ def h_compile(cache, args):
     maxlen = get_required_arg(args, 'maxlen')
     compile_train = bool(eval(get_required_arg(args, 'compile_train')))
 
-    wc_src = 1484
-    wc_dst = 1374
+    # load embeddings (needed here to determine the W size)
+    embedding_src = get_embedding(cache, args, 'embedding_src')
+    embedding_dst = get_embedding(cache, args, 'embedding_dst')
 
-    wc_src = 13
-    wc_dst = 10
-
-    #wc_src = 5
-    #wc_dst = 5
+    wc_src = embedding_src.word_count
+    wc_dst = embedding_dst.word_count
 
     start_token=None 
     #loss='mean_squared_error'
