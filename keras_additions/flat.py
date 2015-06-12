@@ -481,9 +481,9 @@ class FlatDense(Layer):
 
     def output(self, train):
         Xo, parent_c, parent_h = self.get_input(train)
-        #output = self.activation(T.dot(Xo, self.W) + self.b)
-        output = T.dot(Xo, self.W) + self.b
+        output = self.activation(T.dot(Xo, self.W) + self.b)
         return output, parent_c, parent_h
+        #output = T.dot(Xo, self.W) + self.b
         #return output, parent_c + [self.c_tm1], parent_h + [self.h_tm1]
 
 

@@ -217,7 +217,9 @@ def full_stats(round_stats, sets, DLs, model, sample_size=None, batch_size=8, lo
             correct = [sum((yy == rr for yy, rr in izip(y, r))) for y, r \
                     in izip(Y_tokens_batch, R_tokens_batch)]
             correct_pct = [c / float(len(y)) for c, y in izip(correct, Y_tokens_batch)]
+            print '====================='
             print R_emb
+            print R_emb.shape
             print Y_tokens_batch
             print R_tokens_batch
             print correct

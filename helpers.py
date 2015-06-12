@@ -27,6 +27,8 @@ from kvembed import KVEmbed
 from utils import *
 from output_dumps import *
 
+from higher_activations import softmaxN
+
 ftype = numpy.float32
 
 
@@ -108,7 +110,7 @@ def build_model(layer_size, layer_count, wc_src, wc_dst, maxlen, start_token, lo
     model_B.add(FlatDense(wc_dst, layer_size))
     for i in range(layer_count):
         model_B.add(FlatLSTM(layer_size, layer_size, return_sequences=True))
-    model_B.add(FlatDense(layer_size, wc_dst, activation='softmax'))
+    model_B.add(FlatDense(layer_size, wc_dst, activation=softmaxN))
     
     model = JointModel(model_A, model_B)
     #model.X1 = [[primer_v]]
@@ -184,7 +186,10 @@ def load_datasets(req, embed_src, embed_dst, infile_src, infile_dst, maxlen):
             # create mask from Y vectors
             s = embed_dst.word_count
             e = embed_dst.end
-            mask = [[[int((v == e).all())]*s for v in y] for y in Y_vectors]
+            mask = [[[1-int((v == e).all())]*s for v in y] for y in Y_vectors]
+            print 'e', e
+            print 'Y_vectors[0]', Y_vectors[0]
+            print 'mask', mask
             M = numpy.array(mask, dtype=ftype)
             print 'loaded M'
             print M.nbytes

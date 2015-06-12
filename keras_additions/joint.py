@@ -142,6 +142,13 @@ class JointModel(object):
         LR = [lr_A, lr_B]
         H = [numpy.zeros((len(X[0]), layer.output_dim), dtype=numpy.float32)
                 for layer in self.model_B.CH_layers]
+        #print '=== BEGIN ======================='
+        #print 'X', X
+        #print 'y', y
+        #print 'M', M
+        #print 'X1', X1
+        #print 'LR', LR
+        #print 'H', H
         return self.__train(*(X + y + M + X1 + LR + H))
 
     def _predict(self, X):

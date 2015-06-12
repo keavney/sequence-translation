@@ -306,8 +306,15 @@ def h_compile(cache, args):
     wc_src = 1484
     wc_dst = 1374
 
+    wc_src = 13
+    wc_dst = 10
+
+    #wc_src = 5
+    #wc_dst = 5
+
     start_token=None 
-    loss='mean_squared_error'
+    #loss='mean_squared_error'
+    loss='binary_crossentropy'
     optimizer=get_required_arg(args, 'optimizer')
 
     # build model
