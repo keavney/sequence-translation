@@ -215,6 +215,8 @@ def get_embedding(cache, args, name):
     if res is None:
         embedding_filename = get_required_arg(args, name)
         res = helpers.create_embed(embedding_filename)
+        min_count = 1
+        print "Created token dictionary of size {0} ({1} words, {2} special tokens) from {3} (min_count = {4})".format(res.token_count, res.word_count, res.special_token_count, embedding_filename, min_count)
         cache[name] = res
     return res
 
@@ -260,8 +262,8 @@ def h_compile(cache, args):
     embedding_src = get_embedding(cache, args, 'embedding_src')
     embedding_dst = get_embedding(cache, args, 'embedding_dst')
 
-    wc_src = embedding_src.word_count
-    wc_dst = embedding_dst.word_count
+    tc_src = embedding_src.token_count
+    tc_dst = embedding_dst.token_count
 
     start_token=None 
     #loss='mean_squared_error'
@@ -270,7 +272,7 @@ def h_compile(cache, args):
 
     # build model
     log("Building model...")
-    model = helpers.build_model(layer_size, layer_count, wc_src, wc_dst,
+    model = helpers.build_model(layer_size, layer_count, tc_src, tc_dst,
             maxlen, start_token, loss, optimizer, compile_train)
             
     outfile = args.output_compiled_model

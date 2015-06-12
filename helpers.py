@@ -130,7 +130,7 @@ def _load_dataset(embed, infile, maxlen, reverse=False):
     count = len(variable_lines)
     token_lines = [x[:min(len(x), maxlen)] for x in variable_lines]
 
-    vectors = numpy.zeros((len(token_lines), maxlen, embed.word_count))
+    vectors = numpy.zeros((len(token_lines), maxlen, embed.token_count))
     for i, line in enumerate(token_lines):
         vectors[i] = numpy.array(embed.sentence_to_1h(line, reverse=reverse, pad_length=maxlen))
 
@@ -178,7 +178,7 @@ def load_datasets(req, embed_src, embed_dst, infile_src, infile_dst, maxlen):
 
         if 'M' in req:
             # create mask from Y vectors
-            s = embed_dst.word_count
+            s = embed_dst.token_count
             e = embed_dst.end
             mask = [[[1-int((v == e).all())]*s for v in y] for y in Y_vectors]
             print 'e', e
