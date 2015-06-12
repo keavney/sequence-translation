@@ -84,6 +84,8 @@ class RecurrentSequence(object):
 
         log("Compiling functions...")
 
+        self.CH_layers = filter(lambda x: hasattr(x, 'C1') and hasattr(x, 'H1'), self.layers)
+
         # Loop inner function
         def make_step(train):
             # create closure around train
@@ -95,9 +97,9 @@ class RecurrentSequence(object):
                 # layers for each iteration of the loop.
                 # last_S is variadic, as inputs to _step need to be
                 # tensors.
-                last_C = last_S[:len(self.layers)]
-                last_H = last_S[len(self.layers):]
-                for i, layer in enumerate(self.layers):
+                last_C = last_S[:len(self.CH_layers)]
+                last_H = last_S[len(self.CH_layers):]
+                for i, layer in enumerate(self.CH_layers):
                     layer.c_tm1 = last_C[i]
                     layer.h_tm1 = last_H[i]
 
@@ -126,16 +128,16 @@ class RecurrentSequence(object):
             log("Creating train result (n_steps={0})...".format(self.steps))
             self._train_result_scan, _ = theano.scan(fn=train_step,
                     outputs_info = [dict(initial=self.X1, taps=[-1])] + 
-                                   [dict(initial=layer.C1, taps=[-1]) for layer in self.layers] +
-                                   [dict(initial=layer.H1, taps=[-1]) for layer in self.layers],
+                                   [dict(initial=layer.C1, taps=[-1]) for layer in self.CH_layers] +
+                                   [dict(initial=layer.H1, taps=[-1]) for layer in self.CH_layers],
                     n_steps=self.steps)
 
         if 'predict' not in skiplist or 'test' not in skiplist:
             log("Creating predict result (n_steps={0})...".format(self.steps))
             self._predict_result_scan, _ = theano.scan(fn=predict_step,
                     outputs_info = [dict(initial=self.X1, taps=[-1])] + 
-                                   [dict(initial=layer.C1, taps=[-1]) for layer in self.layers] +
-                                   [dict(initial=layer.H1, taps=[-1]) for layer in self.layers],
+                                   [dict(initial=layer.C1, taps=[-1]) for layer in self.CH_layers] +
+                                   [dict(initial=layer.H1, taps=[-1]) for layer in self.CH_layers],
                     n_steps=self.steps)
 
         # Fixes dimensions from result function to produce the
@@ -160,8 +162,8 @@ class RecurrentSequence(object):
                 log("Creating train function...")
                 self.__train = theano.function([self.X1, self.Y, self.M] +
                     [self.lr] + 
-                    [layer.C1 for layer in self.layers] +
-                    [layer.H1 for layer in self.layers],
+                    [layer.C1 for layer in self.CH_layers] +
+                    [layer.H1 for layer in self.CH_layers],
                     self.train_loss, 
                     updates=self.updates, allow_input_downcast=True)
 
@@ -170,8 +172,8 @@ class RecurrentSequence(object):
             if not joint_model:
                 log("Creating predict function...")
                 self.__predict = theano.function([self.X1] +
-                    [layer.C1 for layer in self.layers] +
-                    [layer.H1 for layer in self.layers],
+                    [layer.C1 for layer in self.CH_layers] +
+                    [layer.H1 for layer in self.CH_layers],
                     self.predict_result,
                     allow_input_downcast=True)
 
@@ -180,8 +182,8 @@ class RecurrentSequence(object):
             if not joint_model:
                 log("Creating test function...")
                 self.__test = theano.function([self.X1, self.Y, self.M] +
-                    [layer.C1 for layer in self.layers] +
-                    [layer.H1 for layer in self.layers],
+                    [layer.C1 for layer in self.CH_layers] +
+                    [layer.H1 for layer in self.CH_layers],
                     self.test_score, 
                     allow_input_downcast=True)
 
@@ -442,6 +444,47 @@ class FlatDropout(Layer):
         #    else:
         #        X *= retain_prob
         return X, c + [c[0]], h + [h[0]]
+
+
+
+class FlatDense(Layer):
+    '''
+        Dense layer adapted for use with other Mem layers (incomplete)
+
+        Just your regular fully connected NN layer.
+    '''
+    def __init__(self, input_dim, output_dim, init='uniform', activation='linear', weights=None):
+        self.init = initializations.get(init)
+        self.activation = activations.get(activation)
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+
+        self.input = T.tensor3()
+        self.W = self.init((self.input_dim, self.output_dim))
+        self.b = shared_zeros((self.output_dim))
+
+        self.params = [self.W, self.b]
+
+        if weights is not None:
+            self.set_weights(weights)
+
+        # temporary
+        #self.C1 = T.matrix()
+        #self.H1 = T.matrix()
+
+    def get_input(self, train):
+        if hasattr(self, 'previous_layer'):
+            return self.previous_layer.output(train=train)
+        else:
+            # Need to include empty sequences for C, H
+            return self.input, [], []
+
+    def output(self, train):
+        Xo, parent_c, parent_h = self.get_input(train)
+        #output = self.activation(T.dot(Xo, self.W) + self.b)
+        output = T.dot(Xo, self.W) + self.b
+        return output, parent_c, parent_h
+        #return output, parent_c + [self.c_tm1], parent_h + [self.h_tm1]
 
 
 

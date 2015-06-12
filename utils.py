@@ -1,5 +1,6 @@
 import numpy
 
+ftype = numpy.float32
 epsilon = 1.0e-15
 
 def numpy_softmax(x): 
@@ -34,5 +35,10 @@ def pred_split(e, l):
             a.append(l[tail:i])
             tail = i+1
     a.append(l[tail:])
+    return a
+
+def one_hot(size, index):
+    a = numpy.zeros(size, dtype=ftype)
+    a[index] = 1
     return a
 

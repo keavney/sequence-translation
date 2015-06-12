@@ -86,27 +86,32 @@ def export_weights(model, filename):
 
 def create_embed(input_file):
     log("creating kv embed")
-    eol = [('.', True), ('!', True), ('?', True)]
+    #eol = [('.', True), ('!', True), ('?', True)]
+    eol = []
     embed = KVEmbed(input_file, eol_tokens=eol)
     log("done")
     return embed
 
 
-def build_model(layer_size, layer_count, maxlen, start_token, loss, optimizer, compile_train):
+def build_model(layer_size, layer_count, wc_src, wc_dst, maxlen, start_token, loss, optimizer, compile_train):
     log('Building model...')
 
-    primer_v = [0.]*layer_size
+    #primer_v = numpy.zeros(wc_dst, dtype=ftype)
+    #primer_v[0] = 1.
     
     model_A = SequentialSequence()
+    model_A.add(MemDense(wc_src, layer_size))
     for i in range(layer_count):
         model_A.add(MemLSTM(layer_size, layer_size, return_memories=True))
     
     model_B = RecurrentSequence(n_steps=maxlen)
+    model_B.add(FlatDense(wc_dst, layer_size))
     for i in range(layer_count):
         model_B.add(FlatLSTM(layer_size, layer_size, return_sequences=True))
+    model_B.add(FlatDense(layer_size, wc_dst, activation='softmax'))
     
     model = JointModel(model_A, model_B)
-    model.X1 = [[primer_v]]
+    #model.X1 = [[primer_v]]
     
     log("Compiling model...")
     model.compile(loss=loss, optimizer=optimizer, log_fcn=log, compile_train=compile_train)

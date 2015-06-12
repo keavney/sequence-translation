@@ -303,14 +303,17 @@ def h_compile(cache, args):
     maxlen = get_required_arg(args, 'maxlen')
     compile_train = bool(eval(get_required_arg(args, 'compile_train')))
 
+    wc_src = 500
+    wc_dst = 500
+
     start_token=None 
     loss='mean_squared_error'
     optimizer=get_required_arg(args, 'optimizer')
 
     # build model
     log("Building model...")
-    model = helpers.build_model(layer_size, layer_count, maxlen,
-            start_token, loss, optimizer, compile_train)
+    model = helpers.build_model(layer_size, layer_count, wc_src, wc_dst,
+            maxlen, start_token, loss, optimizer, compile_train)
             
     outfile = args.output_compiled_model
 

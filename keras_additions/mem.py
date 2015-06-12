@@ -294,3 +294,38 @@ class MemDropout(Layer):
                 X *= retain_prob
         return X, m + [m[0]]
 
+
+
+class MemDense(Layer):
+    '''
+        Dense layer adapted for use with other Mem layers (incomplete)
+
+        Just your regular fully connected NN layer.
+    '''
+    def __init__(self, input_dim, output_dim, init='uniform', activation='linear', weights=None):
+        self.init = initializations.get(init)
+        self.activation = activations.get(activation)
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+
+        self.input = T.tensor3()
+        self.W = self.init((self.input_dim, self.output_dim))
+        self.b = shared_zeros((self.output_dim))
+
+        self.params = [self.W, self.b]
+
+        if weights is not None:
+            self.set_weights(weights)
+
+    def get_input(self, train):
+        if hasattr(self, 'previous_layer'):
+            return self.previous_layer.output(train=train)
+        else:
+            # Need to include empty sequences for memories passing
+            return self.input, []
+
+    def output(self, train):
+        X, m = self.get_input(train)
+        output = self.activation(T.dot(X, self.W) + self.b)
+        return output, m + [None]
+
