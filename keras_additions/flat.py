@@ -14,7 +14,7 @@ from itertools import izip, chain
 import numpy
 
 
-def create_masked_loss_old(objective):
+def create_masked_loss(objective):
     def masked_loss(y_true, y_pred, mask):
         y_diff = objective(y_true, y_pred)
         y_masked = y_diff * mask

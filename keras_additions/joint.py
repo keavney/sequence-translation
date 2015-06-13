@@ -16,7 +16,10 @@ import numpy
 from mem import *
 from flat import *
 
-from ..utils import to_one_hotN
+def to_one_hotN(z, nb_class):
+    b = numpy.zeros(list(z.shape) + [nb_class])
+    b.flat[numpy.arange(0, b.size, nb_class) + z.flat] = 1
+    return b
 
 class JointModel(object):
     '''
