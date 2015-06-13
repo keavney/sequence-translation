@@ -204,7 +204,7 @@ def get_required_arg(args, name):
     res = getattr(args, name)
     if res is None:
         caller = sys._getframe().f_back.f_code.co_name
-        print "Error in {0}: parameter {1} not specified. (Did you forget a flag?) Exiting.".format(caller, name)
+        log("Error in {0}: parameter {1} not specified. (Did you forget a flag?) Exiting.".format(caller, name))
         exit(1)
     return res
 
@@ -216,7 +216,7 @@ def get_embedding(cache, args, name):
         embedding_filename = get_required_arg(args, name)
         res = helpers.create_embed(embedding_filename)
         min_count = 1
-        print "Created token dictionary of size {0} ({1} words, {2} special tokens) from {3} (min_count = {4})".format(res.token_count, res.word_count, res.special_token_count, embedding_filename, min_count)
+        log("Created token dictionary of size {0} ({1} words, {2} special tokens) from {3} (min_count = {4})".format(res.token_count, res.word_count, res.special_token_count, embedding_filename, min_count))
         cache[name] = res
     return res
 

@@ -35,8 +35,9 @@ class KVEmbed(object):
         self.word_to_int = {word: i for i, word in enumerate(alltokens)}
         self.int_to_word = {i: word for i, word in enumerate(alltokens)}
 
+        self.eol_tokens = [(self.end_token, False)]
         if eol_tokens is not None:
-            self.eol_tokens = [(self.end_token, False)] + eol_tokens
+            self.eol_tokens += eol_tokens
 
         self.start = one_hot(self.token_count, self.word_to_int[self.start_token])
         self.end = one_hot(self.token_count, self.word_to_int[self.end_token])

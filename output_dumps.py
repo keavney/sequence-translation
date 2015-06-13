@@ -194,8 +194,8 @@ def full_stats(round_stats, sets, DLs, model, sample_size=None, batch_size=8, lo
         summaries = {DL[0]: summary}
         stats[name]['summary'] = summaries
 
-        if sample_size is not None:
-            indices = [random.randint(0, len(X_emb)-1) for i in xrange(sample_size)]
+        if sample_size is not None and sample_size < len(X_emb):
+            indices = random.sample(xrange(len(X_emb)-1), sample_size)
             X_emb = [X_emb[i] for i in indices]
             Y_tokens = [Y_tokens[i] for i in indices]
 
@@ -211,7 +211,6 @@ def full_stats(round_stats, sets, DLs, model, sample_size=None, batch_size=8, lo
             Y_tokens_batch = Y_tokens[:bs]
             R_emb_batch = R_emb[:bs]
 
-            #R_tokens_batch = fm.match(R_emb_batch, log=log)
             R_tokens_batch = [emb.vectors_to_sentence(r) for r in R_emb_batch]
 
             correct = [sum((yy == rr for yy, rr in izip(y, r))) for y, r \
@@ -231,6 +230,8 @@ def full_stats(round_stats, sets, DLs, model, sample_size=None, batch_size=8, lo
             Y_tokens = Y_tokens[bs:]
             R_emb = R_emb[bs:]
 
+        print 'correct_pct_total', name, correct_pct_total
+        print 'correct_pct_size', name, correct_pct_size
         summary['avg_correct_pct'] = correct_pct_total / float(correct_pct_size)
 
     return stats
