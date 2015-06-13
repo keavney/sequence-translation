@@ -130,7 +130,7 @@ def _load_dataset(embed, infile, maxlen, reverse=False):
     count = len(variable_lines)
     token_lines = [x[:min(len(x), maxlen)] for x in variable_lines]
 
-    vectors = numpy.zeros((len(token_lines), maxlen, embed.token_count))
+    vectors = numpy.zeros((len(token_lines), maxlen), dtype=int)
     for i, line in enumerate(token_lines):
         vectors[i] = numpy.array(embed.sentence_to_ids(line, reverse=reverse, pad_length=maxlen))
 
@@ -160,6 +160,8 @@ def load_dataset(embed_src, embed_dst, infile_src, infile_dst, maxlen):
 def load_dataset_test(embed_src, embed_dst, infile_src, infile_dst, maxlen):
     raise NotImplementedError("load_dataset_test: deprecated")
 
+def padright(a, n=1):
+    return a.reshape(list(a.shape)+[1]*n)
 
 def load_datasets(req, embed_src, embed_dst, infile_src, infile_dst, maxlen):
     res = {}
@@ -180,11 +182,12 @@ def load_datasets(req, embed_src, embed_dst, infile_src, infile_dst, maxlen):
             # create mask from Y vectors
             s = embed_dst.token_count
             e = embed_dst.end
-            mask = [[1-int((v == e).all()) for v in y] for y in Y_vectors]
+            mask = [[1-int(v == e) for v in y] for y in Y_vectors]
             print 'e', e
             print 'Y_vectors[0]', Y_vectors[0]
             print 'mask', mask
-            M = numpy.array(mask, dtype=ftype)
+            M = numpy.array(mask, dtype=int)
+            M = padright(M)
             print 'loaded M'
             print M.nbytes
             res['M'] = M

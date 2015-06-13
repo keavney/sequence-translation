@@ -140,8 +140,8 @@ class JointModel(object):
             lr_A = self.model_A.old_lr
         if lr_B is None:
             lr_B = self.model_B.old_lr
-        X = [to_one_hotN(X)]
-        Y = [to_one_hotN(Y)]
+        X = [to_one_hotN(X, self.xwc)]
+        Y = [to_one_hotN(Y, self.ywc)]
         M = [M]
         X1 = [[self.X1[0]]*len(X[0])]
         LR = [lr_A, lr_B]
@@ -161,7 +161,7 @@ class JointModel(object):
             Wrapper to compiled predict function, called by other member functions.
 
         '''
-        X = [to_one_hotN(X)]
+        X = [to_one_hotN(X, self.xwc)]
 
         X1 = [[self.X1[0]]*len(X[0])]
         H = [numpy.zeros((len(X[0]), layer.output_dim), dtype=numpy.float32)
@@ -173,8 +173,8 @@ class JointModel(object):
             Wrapper to compiled test function, called by other member functions.
 
         '''
-        X = [to_one_hotN(X)]
-        Y = [to_one_hotN(Y)]
+        X = [to_one_hotN(X, self.xwc)]
+        Y = [to_one_hotN(Y, self.ywc)]
         M = [M]
         X1 = [[self.X1[0]]*len(X[0])]
         H = [numpy.zeros((len(X[0]), layer.output_dim), dtype=numpy.float32)

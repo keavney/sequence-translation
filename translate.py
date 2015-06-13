@@ -328,6 +328,11 @@ def h_train(cache, args):
         print "Error in train: no compiled model provided: exiting"
         exit()
 
+    tc_src = embedding_src.token_count
+    tc_dst = embedding_dst.token_count
+    model.xwc = tc_src
+    model.ywc = tc_dst
+
     # load weights (if applicable)
     input_weights = args.model_weights
     if input_weights is not None:
