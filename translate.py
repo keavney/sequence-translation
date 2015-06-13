@@ -404,7 +404,7 @@ def h_train(cache, args):
         log("End epoch callback for epoch {0}".format(epoch))
         return s
 
-    model.X1 = [[embedding_dst.start]]
+    model.X1 = [[embedding_dst.start_1h]]
 
     log("Training model...")
     timer_start = datetime.utcnow()

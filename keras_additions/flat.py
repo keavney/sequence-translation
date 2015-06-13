@@ -14,13 +14,22 @@ from itertools import izip, chain
 import numpy
 
 
-def create_masked_loss(objective):
+def create_masked_loss_old(objective):
     def masked_loss(y_true, y_pred, mask):
         y_diff = objective(y_true, y_pred)
         y_masked = y_diff * mask
         return y_masked.mean()
     return masked_loss
 
+#def create_masked_loss(objective, nb_class):
+#    # assumes y_true is of shape (n_sentences, n_words, 1)
+#    # assumes mask if of shape (n_sentences, 1)
+#    def masked_loss(y_true, y_pred, mask):
+#        y_1h = to_one_hotN(y_true, nb_class, dtype=theano.config.floatX)
+#        y_diff = objective(y_1h, y_pred)
+#        y_masked = y_diff * mask
+#        return y_masked.mean()
+#    return masked_loss
 
 class RecurrentSequence(object):
     '''
@@ -483,53 +492,4 @@ class FlatDense(Layer):
         Xo, parent_c, parent_h = self.get_input(train)
         output = self.activation(T.dot(Xo, self.W) + self.b)
         return output, parent_c, parent_h
-        #output = T.dot(Xo, self.W) + self.b
-        #return output, parent_c + [self.c_tm1], parent_h + [self.h_tm1]
 
-
-
-
-##         def closestV(vec):
-##             # TODO: fix grad
-##             #return self.embed_matrix[0] * vec # screen 4 (compiles)
-## 
-##             # loss = abs( 1 - a dot b / ||b||^2 )
-##             #      = abs( i -    d    /    a    )
-## 
-##             d = T.tensordot(vec, self.embed_matrix, [[1], [1]])
-##             a = self.embed_matrix.norm(2, axis=1)
-##             i = T.ones_like(d)
-##             ranks = abs(i - (d / a))
-## 
-##             # get indices of best match (tensor is of shape [batch size, word count])
-##             indices = T.argmin(ranks, axis=1, keepdims=True)
-##             #matches = T.choose(indices, self.embed_matrix)
-##             matches = indices
-##             return matches
-## 
-##         def closest(vec):
-##             #return self.embed_matrix[0] * vec # screen 4 (compiles)
-## 
-##             # loss = abs( 1 - a dot b / ||b||^2 )
-##             #      = abs( i -    d    /    a    )
-## 
-##             d = T.tensordot(vec, self.embed_matrix, [[1], [1]])
-##             a = T.norm(self.embed_matrix, axis=1)
-##             i = T.ones_like(d)
-##             ranks = T.abs(i - (d / a))
-## 
-##             # get indices of best match (tensor is of shape [batch size, word count])
-##             indices = T.argmin(sim, axis=1, keepdims=True)
-##             matches = T.basic.choose(indices, self.embed_matrix)
-##             return matches
-## 
-##             ## # TODO: try and fix, choose doesn't have a gradient
-##             ## # get dot product of each vector in the batch with the embedding matrix
-##             ## # TODO: replace with correct formula
-##             ## sim = T.tensordot(vec, self.embed_matrix, \
-##             ##         [[1], [1]])
-## 
-##             ## # get indices of best match (tensor is of shape [batch size, word count])
-##             ## indices = T.argmax(sim, axis=1, keepdims=True)
-##             ## matches = T.basic.choose(indices, self.embed_matrix)
-##             ## return matches

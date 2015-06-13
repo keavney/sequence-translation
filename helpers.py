@@ -132,7 +132,7 @@ def _load_dataset(embed, infile, maxlen, reverse=False):
 
     vectors = numpy.zeros((len(token_lines), maxlen, embed.token_count))
     for i, line in enumerate(token_lines):
-        vectors[i] = numpy.array(embed.sentence_to_1h(line, reverse=reverse, pad_length=maxlen))
+        vectors[i] = numpy.array(embed.sentence_to_ids(line, reverse=reverse, pad_length=maxlen))
 
     return vectors
 
@@ -180,7 +180,7 @@ def load_datasets(req, embed_src, embed_dst, infile_src, infile_dst, maxlen):
             # create mask from Y vectors
             s = embed_dst.token_count
             e = embed_dst.end
-            mask = [[[1-int((v == e).all())]*s for v in y] for y in Y_vectors]
+            mask = [[1-int((v == e).all()) for v in y] for y in Y_vectors]
             print 'e', e
             print 'Y_vectors[0]', Y_vectors[0]
             print 'mask', mask

@@ -39,12 +39,22 @@ class KVEmbed(object):
         if eol_tokens is not None:
             self.eol_tokens += eol_tokens
 
-        self.start = one_hot(self.token_count, self.word_to_int[self.start_token])
-        self.end = one_hot(self.token_count, self.word_to_int[self.end_token])
+        self.start = self.word_to_int[self.start_token]
+        self.end = self.word_to_int[self.end_token]
+        self.start_1h = one_hot(self.token_count, self.start)
+        self.end_1h = one_hot(self.token_count, self.start)
     
     def get(self, token):
         '''
-            token -> embedding
+            token -> index
+
+        '''
+        i = self.word_to_int.get(token, self.word_to_int[self.invalid_token])
+        return i
+
+    def get_1h(self, token):
+        '''
+            token -> one-hot vector
 
         '''
         i = self.word_to_int.get(token, self.word_to_int[self.invalid_token])
@@ -72,6 +82,14 @@ class KVEmbed(object):
 
     # used to be convert_sentence
     def sentence_to_1h(self, tokens, reverse=False, pad_length=None):
+        vectors = [self.get_1h(x) for x in tokens]
+        if pad_length:
+            vectors += [self.end_1h]*(pad_length-len(vectors))
+        if reverse:
+            vectors = list(reversed(vectors))
+        return vectors
+
+    def sentence_to_ids(self, tokens, reverse=False, pad_length=None):
         vectors = [self.get(x) for x in tokens]
         if pad_length:
             vectors += [self.end]*(pad_length-len(vectors))

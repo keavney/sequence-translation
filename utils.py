@@ -42,3 +42,10 @@ def one_hot(size, index):
     a[index] = 1
     return a
 
+def to_one_hotN(z, nb_class):
+    b = numpy.zeros(list(z.shape) + [nb_class])
+    b.flat[numpy.arange(0, b.size, nb_class) + z.flat] = 1
+    return b
+
+
+

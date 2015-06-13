@@ -16,6 +16,8 @@ import numpy
 from mem import *
 from flat import *
 
+from ..utils import to_one_hotN
+
 class JointModel(object):
     '''
         JointModel: create train/compile/test functions that connect
@@ -126,7 +128,7 @@ class JointModel(object):
 
         log("Done compiling functions")
 
-    def _train(self, X, y, M, lr_A, lr_B):
+    def _train(self, X, Y, M, lr_A, lr_B):
         '''
             Wrapper to compiled train function, called by other member functions.
 
@@ -135,8 +137,8 @@ class JointModel(object):
             lr_A = self.model_A.old_lr
         if lr_B is None:
             lr_B = self.model_B.old_lr
-        X = [X]
-        y = [y]
+        X = [to_one_hotN(X)]
+        Y = [to_one_hotN(Y)]
         M = [M]
         X1 = [[self.X1[0]]*len(X[0])]
         LR = [lr_A, lr_B]
@@ -149,40 +151,39 @@ class JointModel(object):
         #print 'X1', X1
         #print 'LR', LR
         #print 'H', H
-        return self.__train(*(X + y + M + X1 + LR + H))
+        return self.__train(*(X + Y + M + X1 + LR + H))
 
     def _predict(self, X):
         '''
             Wrapper to compiled predict function, called by other member functions.
 
         '''
-        X = [X]
+        X = [to_one_hotN(X)]
+
         X1 = [[self.X1[0]]*len(X[0])]
         H = [numpy.zeros((len(X[0]), layer.output_dim), dtype=numpy.float32)
                 for layer in self.model_B.CH_layers]
         return self.__predict(*(X + X1 + H))
 
-    def _test(self, X, y, M):
+    def _test(self, X, Y, M):
         '''
             Wrapper to compiled test function, called by other member functions.
 
         '''
-        X = [X]
-        y = [y]
+        X = [to_one_hotN(X)]
+        Y = [to_one_hotN(Y)]
         M = [M]
         X1 = [[self.X1[0]]*len(X[0])]
         H = [numpy.zeros((len(X[0]), layer.output_dim), dtype=numpy.float32)
                 for layer in self.model_B.CH_layers]
-        return self.__test(*(X + y + M + X1 + H))
+        return self.__test(*(X + Y + M + X1 + H))
 
-    def train(self, X, y, M, lr_A, lr_B):
-        y = standardize_y(y)
-        loss = self._train(X, y, M, lr_A, lr_B)
+    def train(self, X, Y, M, lr_A, lr_B):
+        loss = self._train(X, Y, M, lr_A, lr_B)
         return loss
 
-    def test(self, X, y, M):
-        y = standardize_y(y)
-        score = self._test(X, y, M)
+    def test(self, X, Y, M):
+        score = self._test(X, Y, M)
         return score
 
     def fit(self,
