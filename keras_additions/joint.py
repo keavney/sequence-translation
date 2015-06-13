@@ -235,7 +235,12 @@ class JointModel(object):
                     if not is_last_batch or not do_validation:
                         progbar.update(batch_end, [('loss', loss*m)])
                     else:
-                        val_loss = self.test(X_val, Y_val, M_val)
+                        #val_loss = self.test(X_val, Y_val, M_val)
+                        i_vt = random.sample(xrange(len(X_val)-1), batch_size)
+                        X_vt = [X_val[i] for i in i_vt]
+                        Y_vt = [Y_val[i] for i in i_vt]
+                        M_vt = [M_val[i] for i in i_vt]
+                        val_loss = self.test(X_vt, Y_vt, M_vt)
                         progbar.update(batch_end, [('loss', loss*m), ('val. loss', val_loss*m)])
 
             loss = progbar.sum_values['loss'][0] / (m * progbar.sum_values['loss'][1])
