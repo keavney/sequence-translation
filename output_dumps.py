@@ -196,20 +196,18 @@ def full_stats(round_stats, sets, DLs, model, sample_size=None, batch_size=8, lo
 
         if sample_size is not None and sample_size < len(X_emb):
             indices = random.sample(xrange(len(X_emb)), sample_size)
-            X_emb = [X_emb[i] for i in indices]
+            X_emb = numpy.array([X_emb[i] for i in indices])
             Y_tokens = [Y_tokens[i] for i in indices]
 
-        R_emb = model.predict_batch(X_emb)
-        #bs = fm.batch_size
         bs = 8
-        R_tokens = []
 
         correct_pct_total = 0
         correct_pct_size = 0
 
-        while len(R_emb):
+        while len(X_emb):
+            X_emb_batch = X_emb[:bs]
             Y_tokens_batch = Y_tokens[:bs]
-            R_emb_batch = R_emb[:bs]
+            R_emb_batch = model.predict_batch(X_emb_batch)
 
             R_tokens_batch = [emb.vectors_to_sentence(r) for r in R_emb_batch]
 
@@ -227,8 +225,8 @@ def full_stats(round_stats, sets, DLs, model, sample_size=None, batch_size=8, lo
             correct_pct_total += sum(correct_pct)
             correct_pct_size += len(correct_pct)
 
+            X_emb = X_emb[bs:]
             Y_tokens = Y_tokens[bs:]
-            R_emb = R_emb[bs:]
 
         print 'correct_pct_total', name, correct_pct_total
         print 'correct_pct_size', name, correct_pct_size

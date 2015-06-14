@@ -167,8 +167,7 @@ def load_datasets(req, embed_src, embed_dst, infile_src, infile_dst, maxlen):
     res = {}
     if 'X_emb' in req:
         X_vectors = _load_dataset(embed_src, infile_src, maxlen, reverse=True)
-        print 'loaded X'
-        print X_vectors.nbytes
+        print 'loaded X ({0} bytes)'.format(X_vectors.nbytes)
         res['X_emb'] = X_vectors
     
     if 'X_tokens' in req:
@@ -183,17 +182,12 @@ def load_datasets(req, embed_src, embed_dst, infile_src, infile_dst, maxlen):
             s = embed_dst.token_count
             e = embed_dst.end
             mask = [[1-int(v == e) for v in y] for y in Y_vectors]
-            print 'e', e
-            print 'Y_vectors[0]', Y_vectors[0]
-            print 'mask', mask
             M = numpy.array(mask, dtype=int)
             M = padright(M)
-            print 'loaded M'
-            print M.nbytes
+            print 'loaded M ({0} bytes)'.format(M.nbytes)
             res['M'] = M
 
-        print 'loaded Y'
-        print Y_vectors.nbytes
+        print 'loaded Y ({0} bytes)'.format(Y_vectors.nbytes)
         res['Y_emb'] = Y_vectors
 
     if 'Y_tokens' in req:

@@ -12,6 +12,7 @@ from keras.layers.core import Layer
 from itertools import izip, chain
 
 import numpy
+import random
 
 from mem import *
 from flat import *
@@ -236,10 +237,10 @@ class JointModel(object):
                         progbar.update(batch_end, [('loss', loss*m)])
                     else:
                         #val_loss = self.test(X_val, Y_val, M_val)
-                        i_vt = random.sample(xrange(len(X_val)-1), batch_size)
-                        X_vt = [X_val[i] for i in i_vt]
-                        Y_vt = [Y_val[i] for i in i_vt]
-                        M_vt = [M_val[i] for i in i_vt]
+                        i_vt = random.sample(xrange(len(X_val)), batch_size)
+                        X_vt = numpy.array([X_val[i] for i in i_vt])
+                        Y_vt = numpy.array([Y_val[i] for i in i_vt])
+                        M_vt = numpy.array([M_val[i] for i in i_vt])
                         val_loss = self.test(X_vt, Y_vt, M_vt)
                         progbar.update(batch_end, [('loss', loss*m), ('val. loss', val_loss*m)])
 
