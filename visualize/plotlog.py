@@ -35,7 +35,7 @@ for arg in sys.argv[3:]:
         print 'empty'
         continue
 
-    dicts = eval(text)
+    dicts = eval(text.replace('nan', '-1.'))
 
     color = colors.next()
     for setname, line in sets:

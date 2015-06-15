@@ -2,6 +2,7 @@ import sys
 import argparse
 import subprocess
 import collections
+import math
 
 import helpers
 import output_dumps
@@ -368,6 +369,9 @@ def h_train(cache, args):
                 return None
             except TypeError:
                 return None
+
+        if math.isnan(loss) or math.isnan(val_loss):
+            return False
 
         loss      = dict_or_None(lambda: callback_result['sets']['train']['loss'])
         val_loss  = dict_or_None(lambda: callback_result['sets']['validate']['loss'])
