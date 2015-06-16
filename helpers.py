@@ -108,6 +108,8 @@ def build_model(layer_size, layer_count, wc_src, wc_dst, maxlen, start_token, lo
     model_B.add(FlatDense(layer_size, wc_dst, activation=softmaxN))
     
     model = JointModel(model_A, model_B)
+    model.xwc = wc_src
+    model.ywc = wc_dst
     
     log("Compiling model...")
     model.compile(loss=loss, optimizer=optimizer, log_fcn=log, compile_train=compile_train)

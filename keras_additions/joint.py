@@ -125,7 +125,10 @@ class JointModel(object):
                     [layer.H1 for layer in self.model_B.CH_layers],
                     self.model_B.train_loss,
                     updates=self.model_A.updates + self.model_B.updates,
+                    #mode='DebugMode',
                     allow_input_downcast=True)
+            #log('self.__train: debug mode enabled')
+
         else:
             log("Skipped creating train function")
             self.__train = None

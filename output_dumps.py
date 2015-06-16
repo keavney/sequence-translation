@@ -194,7 +194,7 @@ def full_stats(round_stats, sets, DLs, model, sample_size=None, batch_size=8, lo
         summaries = {DL[0]: summary}
         stats[name]['summary'] = summaries
 
-        if sample_size is not None and sample_size < len(X_emb):
+        if sample_size is not None and sample_size > 0 and sample_size < len(X_emb):
             indices = random.sample(xrange(len(X_emb)), sample_size)
             X_emb = numpy.array([X_emb[i] for i in indices])
             Y_tokens = [Y_tokens[i] for i in indices]

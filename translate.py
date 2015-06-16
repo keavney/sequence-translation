@@ -19,7 +19,6 @@ def main():
         ('compile',     h_compile),
         ('train',       h_train),
         ('test',        h_test),
-        ('test_old',    h_test_old),
         ('export',      h_export),
         ('interactive', h_interactive),
     ]
@@ -89,6 +88,9 @@ def main():
     parser.add_argument('--epoch-start', dest='epoch_start', type=int,
             default=0,
             help="Starting epoch")
+    parser.add_argument('--sample-size', dest='sample_size', type=int,
+            default=200,
+            help="Sample size for validation loss/test+validation statistics (if <= 0: use the entire sets)")
 
     # trianing thresholds
     parser.add_argument('--epochs', dest='epochs', type=int,
@@ -215,6 +217,9 @@ def get_embedding(cache, args, name):
     res = cache[name]
     if res is None:
         embedding_filename = get_required_arg(args, name)
+        embedding_filename = getattr(args, name)
+        if embedding_filename is None:
+            embedding_filename = get_required_arg(args, name.replace('embedding', 'train'))
         res = helpers.create_embed(embedding_filename)
         min_count = 1
         log("Created token dictionary of size {0} ({1} words, {2} special tokens) from {3} (min_count = {4})".format(res.token_count, res.word_count, res.special_token_count, embedding_filename, min_count))
@@ -267,14 +272,15 @@ def h_compile(cache, args):
     tc_dst = embedding_dst.token_count
 
     start_token=None 
-    #loss='mean_squared_error'
-    loss='binary_crossentropy'
+    loss='mean_squared_error'
+    #loss='binary_crossentropy'
     optimizer=get_required_arg(args, 'optimizer')
 
     # build model
     log("Building model...")
     model = helpers.build_model(layer_size, layer_count, tc_src, tc_dst,
             maxlen, start_token, loss, optimizer, compile_train)
+    model.X1 = [[embedding_dst.start_1h]]
             
     outfile = args.output_compiled_model
 
@@ -286,12 +292,12 @@ def h_compile(cache, args):
 
 
 def h_train(cache, args):
+    sets = {}
+    req = ['X_emb', 'Y_tokens', 'Y_emb', 'M', 'maxlen']
+
     # load embeddings
     embedding_src = get_embedding(cache, args, 'embedding_src')
     embedding_dst = get_embedding(cache, args, 'embedding_dst')
-
-    sets = {}
-    req = ['X_emb', 'Y_tokens', 'Y_emb', 'M', 'maxlen']
 
     # load train dataset
     train_src = get_required_arg(args, 'train_src')
@@ -329,11 +335,6 @@ def h_train(cache, args):
         print "Error in train: no compiled model provided: exiting"
         exit()
 
-    tc_src = embedding_src.token_count
-    tc_dst = embedding_dst.token_count
-    model.xwc = tc_src
-    model.ywc = tc_dst
-
     # load weights (if applicable)
     input_weights = args.model_weights
     if input_weights is not None:
@@ -370,13 +371,13 @@ def h_train(cache, args):
             except TypeError:
                 return None
 
-        if math.isnan(loss) or math.isnan(val_loss):
-            return False
-
         loss      = dict_or_None(lambda: callback_result['sets']['train']['loss'])
         val_loss  = dict_or_None(lambda: callback_result['sets']['validate']['loss'])
         error     = dict_or_None(lambda: 1 - callback_result['sets']['train']['summary']['normal, L2']['avg_correct_pct'])
         val_error = dict_or_None(lambda: 1 - callback_result['sets']['validate']['summary']['normal, L2']['avg_correct_pct'])
+
+        if (loss is not None and math.isnan(loss)) or (val_loss is not None and math.isnan(val_loss)):
+            return False
 
         return not (
             check_gte(epoch, args.epochs) or \
@@ -384,6 +385,8 @@ def h_train(cache, args):
             (check_lte(loss, args.loss) and check_lte(val_loss, args.loss)) or \
             (check_lte(error, args.error) and check_lte(val_error, args.error))
         )
+
+    sample_size = get_required_arg(args, 'sample_size')
 
     # end of epoch callback: output stats, take snapshot
     snapshot_prefix = args.output_snapshot_prefix
@@ -395,7 +398,7 @@ def h_train(cache, args):
         if validation_skip > 0 and (epoch + 1) % validation_skip == 0:
             DLs = [('normal, L2', None, embedding_dst)]
             set_dicts = output_dumps.full_stats(round_stats, sets, DLs,
-                    model, sample_size=160, log=lambda *_: None)
+                    model, sample_size=sample_size, log=lambda *_: None)
         else:
             set_dicts = round_stats
 
@@ -442,7 +445,8 @@ def h_train(cache, args):
 
 
 def h_test(cache, args):
-    raise Exception("Not currently working")
+    sets = {}
+    req = ['X_emb', 'Y_tokens']
 
     # load embeddings
     embedding_src = get_embedding(cache, args, 'embedding_src')
@@ -452,85 +456,29 @@ def h_test(cache, args):
     test_src = get_required_arg(args, 'test_src')
     test_dst = get_required_arg(args, 'test_dst')
 
-    #maxlen = model.model_B.steps
     maxlen = get_required_arg(args, 'maxlen')
 
-    log('loading dataset')
-    X, X_words, Y_words, maxlen = helpers.load_dataset_test(
+    sets['test'] = helpers.load_datasets(req,
             embedding_src, embedding_dst,
             test_src, test_dst,
             maxlen)
-    log('done loading dataset')
-
-    bs = 8
-
-    print X.shape
-    print X[:bs].shape
-
-    print embedding_dst.embed_matrix.shape
     
     # load model
     log('loading model')
     model = get_fitted_model(cache, args)
     log('done loading model')
 
-    c = count()
-    st = datetime.utcnow()
-    log('start: {0}'.format(st))
+    sample_size = get_required_arg(args, 'sample_size')
 
-    R = model.predict_batch(X, batch_size=len(X))
+    # compute test
+    round_stats = {'test':{}}
+    DLs = [('normal, L2', None, embedding_dst)]
+    set_dicts = output_dumps.full_stats(round_stats, sets, DLs,
+            model, sample_size=sample_size, log=lambda *_: None)
 
-    while len(R):
-        X_words_batch = X_words[:bs]
-        Y_words_batch = Y_words[:bs]
-        R_batch = R[:bs]
+    print set_dicts
 
-        R_t = fm.match(R_batch, log=log)
-        R_clipped = [r[:len(y)] for r, y in izip(R_t, Y_words_batch)]
-
-        for x, y, r in izip(X_words_batch, Y_words_batch, R_clipped):
-            print c.next()
-            print ' '.join(x)
-            print ' '.join(y)
-            print ' '.join(r)
-            print ''
-         
-        X_words = X_words[bs:]
-        Y_words = Y_words[bs:]
-        R = R[bs:]
-
-    fi = datetime.utcnow()
-    log('finish: {0}'.format(fi))
-    log('diff: {0}'.format(fi - st))
-
-
-def h_test_old(cache, args):
-    raise Exception("Not currently working")
-
-    # load model
-    model = get_fitted_model(cache, args)
-
-    # load embeddings
-    embedding_src = get_embedding(cache, args, 'embedding_src')
-    embedding_dst = get_embedding(cache, args, 'embedding_dst')
-
-    # load dataset
-    test_src = get_required_arg(args, 'test_src')
-    test_dst = get_required_arg(args, 'test_dst')
-
-    maxlen = model.model_B.steps
-
-    X, Y, M, maxlen = helpers.load_dataset(
-            embedding_src, embedding_dst,
-            test_src, test_dst,
-            maxlen)
-
-    # test
-    test_format = args.test_format.lower()
-    print test_format
-
-    output_dumps.realtest(embedding_src, embedding_dst, model, X, Y)
-    return
+    log("done test")
 
 
 def h_export(cache, args):

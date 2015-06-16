@@ -13,6 +13,16 @@ from itertools import izip, chain
 
 import numpy
 
+epsilon = 1.e-15
+
+#def create_masked_loss(objective):
+#    def masked_loss(y_true, y_pred, mask):
+#        y_pred_clipped = T.clip(y_pred, epsilon, 1.-epsilon)
+#        y_true = T.clip(y_true, epsilon, 1.-epsilon)
+#        y_diff = objective(y_pred_clipped, y_true)
+#        y_masked = y_diff * mask
+#        return y_masked.mean()
+#    return masked_loss
 
 def create_masked_loss(objective):
     def masked_loss(y_true, y_pred, mask):
