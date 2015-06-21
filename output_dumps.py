@@ -178,11 +178,10 @@ def datadump(embed_src, embed_dst, model, sets, epoch_no, size, oe_size, DLs):
 
     return epoch
 
-def full_stats(round_stats, sets, DLs, model, sample_size=None, batch_size=8, log=lambda *_: None):
+def full_stats(round_stats, sets, DLs, model, sample_size=None, batch_size=8, log=lambda *_: None, show_multiple=False):
     if len(DLs) != 1:
         raise Exception("len(DLs) != 1 (only normal, L2 is supported)")
     DL = DLs[0]
-    #fm = DL[2]
     emb = DL[2]
 
     stats = round_stats
@@ -214,11 +213,22 @@ def full_stats(round_stats, sets, DLs, model, sample_size=None, batch_size=8, lo
             correct = [sum((yy == rr for yy, rr in izip(y, r))) for y, r \
                     in izip(Y_tokens_batch, R_tokens_batch)]
             correct_pct = [c / float(len(y)) for c, y in izip(correct, Y_tokens_batch)]
+
             print '====================='
-            #print R_emb_batch
-            print R_emb_batch.shape
-            print Y_tokens_batch
-            print R_tokens_batch
+
+            if show_multiple:
+                n = 5
+                R_mult = [[emb.matchN(v, n=n) for v in r] for r in R_emb_batch]
+                for Yb, Rb in izip(Y_tokens_batch, R_mult):
+                    print '====================='
+                    for Y, Rn in izip(Yb, Rb):
+                        print "{0:<12} ".format(Y) + ' '.join(["{0:>12} ({1:>16}%)".format(r, p) for r, index, p in Rn])
+
+            else:
+                print R_emb_batch.shape
+                print Y_tokens_batch
+                print R_tokens_batch
+
             print correct
             print correct_pct
 
@@ -237,72 +247,4 @@ def full_stats(round_stats, sets, DLs, model, sample_size=None, batch_size=8, lo
         summary['pct_correct_pct'] = pct
 
     return stats
-
-
-# sets: expects tuples of (set name, input embeddings, label embeddings, loss)
-def setacc(embed_src, embed_dst, model, sets, epoch_no, td, size, DLs):
-    e_sets = {}
-    epoch = {'epoch': epoch_no, 'time': td, 'sets': e_sets}
-    data = {'epochs': [epoch]}
-    for name, X_emb, Y_emb, loss in sets: 
-        if size is not None:
-            ## too slow
-            #pairs = random.sample(zip(X_emb, Y_emb), size)
-            #X_emb = [x for x, y in pairs]
-            #Y_emb = [y for x, y in pairs]
-            indices = [random.randint(0, len(X_emb)-1) for i in xrange(size)]
-            X_emb = [X_emb[i] for i in indices]
-            Y_emb = [Y_emb[i] for i in indices]
-        entries = []
-        s = {'loss': loss}
-        e_sets[name] = s
-        R_emb = model.predict_batch(X_emb)
-        for i, (x_emb, y_emb, r_emb) in enumerate(izip(X_emb, Y_emb, R_emb)):
-            x = embed_src.match_sentence(list(reversed(x_emb)))
-            y = embed_dst.match_sentence(y_emb)
-
-            outputs = {}
-
-            for mode, D, metric in DLs:
-                r = embed_dst.match_sentence(r_emb, w=D, metric=metric)
-                correct = sum((yy == rr for yy, rr in izip(y, r)))
-                correct_pct = correct / float(len(y))
-                outputs[mode] = {
-                        'output': r,
-                        'correct': correct, 
-                        'correct_pct': correct_pct,
-                }
-
-            entry = {
-                    'id': i,
-                    'input': x,
-                    'label': y,
-                    'outputs': outputs,
-            }
-
-            entries.append(entry)
-
-        if len(entries) == 0:
-            s['summary'] = {}
-            continue
-
-        summaries = {}
-        for mode in entries[0]['outputs'].iterkeys():
-            D = None
-            for d in DLs:
-                if d[0] == mode:
-                    D = d
-                    break
-            avg_correct = mean([x['outputs'][mode]['correct'] for x in entries])
-            avg_correct_pct = mean([x['outputs'][mode]['correct_pct'] for x in entries])
-            summary = {
-                'D[1]': D[1],
-                'avg_correct': avg_correct,
-                'avg_correct_pct': avg_correct_pct,
-            }
-            summaries[mode] = summary
-
-        s['summary'] = summaries
-
-    return epoch
 

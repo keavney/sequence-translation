@@ -80,7 +80,6 @@ class KVEmbed(object):
 
         return sentence
 
-    # used to be convert_sentence
     def sentence_to_1h(self, tokens, reverse=False, pad_length=None):
         vectors = [self.get_1h(x) for x in tokens]
         if pad_length:
@@ -97,7 +96,6 @@ class KVEmbed(object):
             vectors = list(reversed(vectors))
         return vectors
 
-    # used to be match_sentence
     def vectors_to_sentence(self, vectors, clip=True):
         tokens = [self.int_to_word[numpy.argmax(v)] for v in vectors]
         if clip:
@@ -109,11 +107,11 @@ class KVEmbed(object):
             Takes a probability vector of length token_count and returns the top n tokens.
 
         '''
-        if len(vec) != self.token_count:
-            raise Exception("matchN: invalid input: expected vector of length {0} (received length {1})".format(self.token_count, len(vec)))
+        if len(vector) != self.token_count:
+            raise Exception("matchN: invalid input: expected vector of length {0} (received length {1})".format(self.token_count, len(vector)))
 
         matches = [(self.int_to_word[i], i, prob) for i, prob in sorted(enumerate(vector), key=lambda (i, prob): prob, reverse=True)[:n]]
-        return tokens
+        return matches
 
     def get_matrix(self, *args, **kwargs):
         raise NotImplementedError("get_matrix: Not implemented")

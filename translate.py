@@ -91,6 +91,9 @@ def main():
     parser.add_argument('--sample-size', dest='sample_size', type=int,
             default=200,
             help="Sample size for validation loss/test+validation statistics (if <= 0: use the entire sets)")
+    parser.add_argument('--show-multiple', dest='show_multiple', type=str,
+            default='false',
+            help="Show top-N for each translation")
 
     # trianing thresholds
     parser.add_argument('--epochs', dest='epochs', type=int,
@@ -211,6 +214,18 @@ def get_required_arg(args, name):
         exit(1)
     return res
 
+def s2b(s):
+    sl = s.lower()
+    if sl == 'true':
+        return True
+    if sl == 'false':
+        return False
+    try:
+        i = int(sl)
+        return bool(i)
+    except ValueError:
+        raise Exception("Invalid boolean input: {0}".format(s))
+
 
 # wrapper for embedding
 def get_embedding(cache, args, name):
@@ -262,7 +277,7 @@ def h_compile(cache, args):
     layer_size = get_required_arg(args, 'embedding_size')
     layer_count = get_required_arg(args, 'layer_count')
     maxlen = get_required_arg(args, 'maxlen')
-    compile_train = bool(eval(get_required_arg(args, 'compile_train')))
+    compile_train = s2b(get_required_arg(args, 'compile_train'))
 
     # load embeddings (needed here to determine the W size)
     embedding_src = get_embedding(cache, args, 'embedding_src')
@@ -294,6 +309,7 @@ def h_compile(cache, args):
 def h_train(cache, args):
     sets = {}
     req = ['X_emb', 'Y_tokens', 'Y_emb', 'M', 'maxlen']
+    show_multiple = s2b(get_required_arg(args, 'show_multiple'))
 
     # load embeddings
     embedding_src = get_embedding(cache, args, 'embedding_src')
@@ -398,7 +414,8 @@ def h_train(cache, args):
         if validation_skip > 0 and (epoch + 1) % validation_skip == 0:
             DLs = [('normal, L2', None, embedding_dst)]
             set_dicts = output_dumps.full_stats(round_stats, sets, DLs,
-                    model, sample_size=sample_size, log=lambda *_: None)
+                    model, sample_size=sample_size, log=lambda *_: None,
+                    show_multiple=show_multiple)
         else:
             set_dicts = round_stats
 
@@ -447,6 +464,7 @@ def h_train(cache, args):
 def h_test(cache, args):
     sets = {}
     req = ['X_emb', 'Y_tokens']
+    show_multiple = s2b(get_required_arg(args, 'show_multiple'))
 
     # load embeddings
     embedding_src = get_embedding(cache, args, 'embedding_src')
@@ -474,7 +492,8 @@ def h_test(cache, args):
     round_stats = {'test':{}}
     DLs = [('normal, L2', None, embedding_dst)]
     set_dicts = output_dumps.full_stats(round_stats, sets, DLs,
-            model, sample_size=sample_size, log=lambda *_: None)
+            model, sample_size=sample_size, log=lambda *_: None,
+            show_multiple=show_multiple)
 
     print set_dicts
 
