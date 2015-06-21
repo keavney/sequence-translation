@@ -70,7 +70,12 @@ def import_weights(filename):
     weights = None
     try:
         with open(filename, 'r') as f:
-            weights = eval(f.read().strip())
+            instr = f.read().strip()
+            if len(instr) < 1e6:
+                weights = eval(instr)
+            else:
+                l = LazyArray(instr)
+                weights = l.materialize()
     except Exception, e:
         print "Error in import_weights: could not import weights"
         print traceback.format_exc()

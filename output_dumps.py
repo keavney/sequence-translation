@@ -230,7 +230,11 @@ def full_stats(round_stats, sets, DLs, model, sample_size=None, batch_size=8, lo
 
         print 'correct_pct_total', name, correct_pct_total
         print 'correct_pct_size', name, correct_pct_size
-        summary['avg_correct_pct'] = correct_pct_total / float(correct_pct_size)
+
+        pct = correct_pct_total / float(correct_pct_size)
+        print 'correct_pct', name, pct
+
+        summary['pct_correct_pct'] = pct
 
     return stats
 
