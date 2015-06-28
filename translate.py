@@ -287,8 +287,8 @@ def h_compile(cache, args):
     tc_dst = embedding_dst.token_count
 
     start_token=None 
-    loss='mean_squared_error'
-    #loss='binary_crossentropy'
+    #loss='mean_squared_error'
+    loss='binary_crossentropy'
     optimizer=get_required_arg(args, 'optimizer')
 
     # build model

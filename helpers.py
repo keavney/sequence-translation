@@ -100,17 +100,33 @@ def create_embed(input_file, min_count=1):
 
 def build_model(layer_size, layer_count, wc_src, wc_dst, maxlen, start_token, loss, optimizer, compile_train):
     log('Building model...')
+
+    #model_type = 'old'
+    #model_type = 'new'
     
     model_A = SequentialSequence()
     model_A.add(MemDense(wc_src, layer_size))
     for i in range(layer_count):
         model_A.add(MemLSTM(layer_size, layer_size, return_memories=True))
     
-    model_B = RecurrentSequence(n_steps=maxlen)
-    model_B.add(FlatDense(wc_dst, layer_size))
-    for i in range(layer_count):
-        model_B.add(FlatLSTM(layer_size, layer_size, return_sequences=True))
-    model_B.add(FlatDense(layer_size, wc_dst, activation=softmaxN))
+    #if model_type == 'new':
+    model_B = SequentialSequence()
+    mni = MemLSTM_NoInput(layer_size, layer_size, return_memories=True)
+    mni.n = maxlen
+    mni.H1 = T.matrix('h1')
+    model_B.add(mni)
+    #model_B.params += [x for x in model_A.layers[-1].params]
+    for i in range(layer_count-1):
+        m = MemLSTM(layer_size, layer_size, return_memories=True)
+        m.H1 = T.matrix()
+        model_B.add(m)
+    model_B.add(MemDense(layer_size, wc_dst, activation=softmaxN))
+    #else:
+    #    model_B = RecurrentSequence(n_steps=maxlen)
+    #    model_B.add(FlatDense(wc_dst, layer_size))
+    #    for i in range(layer_count):
+    #        model_B.add(FlatLSTM(layer_size, layer_size, return_sequences=True))
+    #    model_B.add(FlatDense(layer_size, wc_dst, activation=softmaxN))
     
     model = JointModel(model_A, model_B)
     model.xwc = wc_src

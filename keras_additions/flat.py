@@ -146,17 +146,17 @@ class RecurrentSequence(object):
         if 'train' not in skiplist:
             log("Creating train result (n_steps={0})...".format(self.steps))
             self._train_result_scan, _ = theano.scan(fn=train_step,
-                    outputs_info = [dict(initial=self.X1, taps=[-1])] + 
-                                   [dict(initial=layer.C1, taps=[-1]) for layer in self.CH_layers] +
-                                   [dict(initial=layer.H1, taps=[-1]) for layer in self.CH_layers],
+                    outputs_info = [self.X1] + 
+                                   [layer.C1 for layer in self.CH_layers] +
+                                   [layer.H1 for layer in self.CH_layers],
                     n_steps=self.steps)
 
         if 'predict' not in skiplist or 'test' not in skiplist:
             log("Creating predict result (n_steps={0})...".format(self.steps))
             self._predict_result_scan, _ = theano.scan(fn=predict_step,
-                    outputs_info = [dict(initial=self.X1, taps=[-1])] + 
-                                   [dict(initial=layer.C1, taps=[-1]) for layer in self.CH_layers] +
-                                   [dict(initial=layer.H1, taps=[-1]) for layer in self.CH_layers],
+                    outputs_info = [self.X1] + 
+                                   [layer.C1 for layer in self.CH_layers] +
+                                   [layer.H1 for layer in self.CH_layers],
                     n_steps=self.steps)
 
         # Fixes dimensions from result function to produce the

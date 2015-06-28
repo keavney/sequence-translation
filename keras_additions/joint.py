@@ -50,8 +50,11 @@ class JointModel(object):
 
         '''
         output_A, memories_A = self.model_A.layers[-1].output(train=train)
-        for mem_A, layer_B in izip(memories_A, self.model_B.layers) :
+        for mem_A, layer_B in izip(filter(lambda x: x is not None, memories_A),
+                filter(lambda x: hasattr(x, 'C1'), self.model_B.layers)) :
+            print 'try connect', mem_A, layer_B
             if hasattr(layer_B, 'C1'):
+                print 'connected'
                 layer_B.C1 = mem_A
 
     def compile(self, optimizer, loss, log_fcn=lambda x, y: (x, y),
@@ -85,18 +88,15 @@ class JointModel(object):
 
         log("Creating predict function...")
         self.__predict = theano.function([self.model_A.X] + 
-                [self.model_B.X1] + 
                 [layer.H1 for layer in self.model_B.CH_layers],
                 self.model_B.predict_result,
                 allow_input_downcast=True)
 
         log("Creating test function...")
         self.__test = theano.function([self.model_A.X, self.model_B.Y, self.model_B.M] + 
-                [self.model_B.X1] + 
                 [layer.H1 for layer in self.model_B.CH_layers],
                 self.model_B.test_score,
                 allow_input_downcast=True)
-
 
         if compile_train:
             log("Creating train function function (train=True)...")
@@ -119,7 +119,6 @@ class JointModel(object):
             
             log("Creating train function...")
             self.__train = theano.function([self.model_A.X, self.model_B.Y, self.model_B.M] + 
-                    [self.model_B.X1] + 
                     [self.model_A.lr] +
                     [self.model_B.lr] +
                     [layer.H1 for layer in self.model_B.CH_layers],
@@ -147,7 +146,6 @@ class JointModel(object):
         X = [to_one_hotN(X, self.xwc)]
         Y = [to_one_hotN(Y, self.ywc)]
         M = [M]
-        X1 = [[self.X1[0]]*len(X[0])]
         LR = [lr_A, lr_B]
         H = [numpy.zeros((len(X[0]), layer.output_dim), dtype=numpy.float32)
                 for layer in self.model_B.CH_layers]
@@ -155,10 +153,9 @@ class JointModel(object):
         #print 'X', X
         #print 'y', y
         #print 'M', M
-        #print 'X1', X1
         #print 'LR', LR
         #print 'H', H
-        return self.__train(*(X + Y + M + X1 + LR + H))
+        return self.__train(*(X + Y + M + LR + H))
 
     def _predict(self, X):
         '''
@@ -167,10 +164,9 @@ class JointModel(object):
         '''
         X = [to_one_hotN(X, self.xwc)]
 
-        X1 = [[self.X1[0]]*len(X[0])]
         H = [numpy.zeros((len(X[0]), layer.output_dim), dtype=numpy.float32)
                 for layer in self.model_B.CH_layers]
-        return self.__predict(*(X + X1 + H))
+        return self.__predict(*(X + H))
 
     def _test(self, X, Y, M):
         '''
@@ -180,10 +176,9 @@ class JointModel(object):
         X = [to_one_hotN(X, self.xwc)]
         Y = [to_one_hotN(Y, self.ywc)]
         M = [M]
-        X1 = [[self.X1[0]]*len(X[0])]
         H = [numpy.zeros((len(X[0]), layer.output_dim), dtype=numpy.float32)
                 for layer in self.model_B.CH_layers]
-        return self.__test(*(X + Y + M + X1 + H))
+        return self.__test(*(X + Y + M + H))
 
     def train(self, X, Y, M, lr_A, lr_B):
         loss = self._train(X, Y, M, lr_A, lr_B)

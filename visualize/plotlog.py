@@ -45,9 +45,13 @@ for arg in sys.argv[3:]:
             Y = [convert(d['sets'][setname]['loss']) for d in dicts]
         else:
             tag = 'avg_correct_pct'
-            clause = lambda d: 'summary' in d['sets'][setname] and metric in d['sets'][setname]['summary'] and tag in d['sets'][setname]['summary'][metric]
-            X = [d[xtype] for d in dicts if clause(d)]
-            Y = [convert(d['sets'][setname]['summary'][metric][tag]) for d in dicts if clause(d)]
+            for tag in ['avg_correct_pct', 'pct_correct_pct']:
+                clause = lambda d: 'summary' in d['sets'][setname] and metric in d['sets'][setname]['summary'] and tag in d['sets'][setname]['summary'][metric]
+                X = [d[xtype] for d in dicts if clause(d)]
+                Y = [convert(d['sets'][setname]['summary'][metric][tag]) for d in dicts if clause(d)]
+                if len(X) > 0:
+                    break
+
         linetype = color + line
         maxval = sorted(zip(X, Y), key=lambda (x, y): y, reverse=True)[0]
         minval = sorted(zip(X, Y), key=lambda (x, y): y, reverse=True)[-1]
