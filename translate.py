@@ -51,6 +51,9 @@ def main():
             help="Test sentences for destination (decoder) network")
     parser.add_argument('--test-both', dest='test_both', type=str,
             help="Test sentences for both encoder and decoder network")
+    parser.add_argument('--reverse-sets', dest='reverse_sets', type=str,
+            default='x',
+            help="Reverse x or y strings (options: none, x, y, xy) (default: x)")
 
     # compile parameters
     parser.add_argument('--embedding-size', dest='embedding_size', type=int,
@@ -95,7 +98,7 @@ def main():
             default='false',
             help="Show top-N for each translation")
 
-    # trianing thresholds
+    # training thresholds
     parser.add_argument('--epochs', dest='epochs', type=int,
             default=None,
             help="Cutoff for training (number of epochs)")
@@ -288,7 +291,8 @@ def h_compile(cache, args):
 
     start_token=None 
     #loss='mean_squared_error'
-    loss='binary_crossentropy'
+    #loss='binary_crossentropy'
+    loss='categorical_crossentropy'
     optimizer=get_required_arg(args, 'optimizer')
 
     # build model
@@ -319,11 +323,12 @@ def h_train(cache, args):
     train_src = get_required_arg(args, 'train_src')
     train_dst = get_required_arg(args, 'train_dst')
     maxlen = get_required_arg(args, 'maxlen')
+    reverse_sets = get_required_arg(args, 'reverse_sets')
 
     sets['train'] = helpers.load_datasets(req,
             embedding_src, embedding_dst,
             train_src, train_dst,
-            maxlen)
+            maxlen, reverse_sets=reverse_sets)
     X_train = sets['train']['X_emb']
     Y_train = sets['train']['Y_emb']
     M_train = sets['train']['M']
@@ -332,11 +337,12 @@ def h_train(cache, args):
     validation_src = get_required_arg(args, 'validation_src')
     validation_dst = get_required_arg(args, 'validation_dst')
     maxlen = get_required_arg(args, 'maxlen')
+    reverse_sets = get_required_arg(args, 'reverse_sets')
 
     sets['validate'] = helpers.load_datasets(req,
             embedding_src, embedding_dst,
             validation_src, validation_dst,
-            maxlen)
+            maxlen, reverse_sets=reverse_sets)
     X_validation = sets['validate']['X_emb']
     Y_validation = sets['validate']['Y_emb']
     M_validation = sets['validate']['M']
@@ -473,13 +479,13 @@ def h_test(cache, args):
     # load dataset
     test_src = get_required_arg(args, 'test_src')
     test_dst = get_required_arg(args, 'test_dst')
-
     maxlen = get_required_arg(args, 'maxlen')
+    reverse_sets = get_required_arg(args, 'reverse_sets')
 
     sets['test'] = helpers.load_datasets(req,
             embedding_src, embedding_dst,
             test_src, test_dst,
-            maxlen)
+            maxlen, reverse_sets=reverse_sets)
     
     # load model
     log('loading model')

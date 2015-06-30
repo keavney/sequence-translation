@@ -186,19 +186,23 @@ def load_dataset_test(embed_src, embed_dst, infile_src, infile_dst, maxlen):
 def padright(a, n=1):
     return a.reshape(list(a.shape)+[1]*n)
 
-def load_datasets(req, embed_src, embed_dst, infile_src, infile_dst, maxlen):
+def load_datasets(req, embed_src, embed_dst, infile_src, infile_dst, maxlen, reverse_sets=None):
     res = {}
+    if reverse_sets is None or str(reverse_sets).lower() == 'none':
+        reverse_sets = []
+    reverse_sets = map(str.lower, reverse_sets)
+
     if 'X_emb' in req:
-        X_vectors = _load_dataset(embed_src, infile_src, maxlen, reverse=True)
+        X_vectors = _load_dataset(embed_src, infile_src, maxlen, reverse='x' in reverse_sets)
         print 'loaded X ({0} bytes)'.format(X_vectors.nbytes)
         res['X_emb'] = X_vectors
     
     if 'X_tokens' in req:
-        X_tokens = _load_dataset_tokens(embed_src, infile_src, maxlen, reverse=True)
+        X_tokens = _load_dataset_tokens(embed_src, infile_src, maxlen, reverse='x' in reverse_sets)
         res['X_tokens'] = X_tokens
 
     if 'Y_emb' in req:
-        Y_vectors = _load_dataset(embed_dst, infile_dst, maxlen, reverse=False)
+        Y_vectors = _load_dataset(embed_dst, infile_dst, maxlen, reverse='y' in reverse_sets)
 
         if 'M' in req:
             # create mask from Y vectors
@@ -214,7 +218,7 @@ def load_datasets(req, embed_src, embed_dst, infile_src, infile_dst, maxlen):
         res['Y_emb'] = Y_vectors
 
     if 'Y_tokens' in req:
-        Y_tokens = _load_dataset_tokens(embed_dst, infile_dst, maxlen, reverse=False)
+        Y_tokens = _load_dataset_tokens(embed_dst, infile_dst, maxlen, reverse='y' in reverse_sets)
         res['Y_tokens'] = Y_tokens
 
     if 'maxlen' in req:
