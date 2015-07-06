@@ -211,6 +211,7 @@ class JointModel(object):
         index_array = numpy.arange(len(X))
         epoch = epoch_start
         callback_result = None
+        val_batch_size = min(batch_size, (len(X_val) if X_val is not None else 0))
         while continue_training(epoch, callback_result):
             if verbose:
                 print 'Epoch', epoch
@@ -235,7 +236,7 @@ class JointModel(object):
                         progbar.update(batch_end, [('loss', loss*m)])
                     else:
                         #val_loss = self.test(X_val, Y_val, M_val)
-                        i_vt = random.sample(xrange(len(X_val)), batch_size)
+                        i_vt = random.sample(xrange(len(X_val)), val_batch_size)
                         X_vt = numpy.array([X_val[i] for i in i_vt])
                         Y_vt = numpy.array([Y_val[i] for i in i_vt])
                         M_vt = numpy.array([M_val[i] for i in i_vt])
