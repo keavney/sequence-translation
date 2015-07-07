@@ -97,6 +97,9 @@ def main():
     parser.add_argument('--show-multiple', dest='show_multiple', type=str,
             default='false',
             help="Show top-N for each translation")
+    parser.add_argument('--loss-function', dest='loss_function', type=str,
+            default=None,
+            help="Loss function")
 
     # training thresholds
     parser.add_argument('--epochs', dest='epochs', type=int,
@@ -290,9 +293,11 @@ def h_compile(cache, args):
     tc_dst = embedding_dst.token_count
 
     start_token=None 
-    #loss='mean_squared_error'
-    #loss='binary_crossentropy'
-    loss='categorical_crossentropy'
+    loss = get_required_arg(args, 'loss_function')
+    if loss is None:
+        loss = 'categorical_crossentropy'
+        #loss = 'mean_squared_error'
+        #loss = 'binary_crossentropy'
     optimizer=get_required_arg(args, 'optimizer')
 
     # build model
