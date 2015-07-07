@@ -2,7 +2,7 @@
 
 import sys
 from matplotlib.pyplot import *
-from itertools import cycle
+from itertools import cycle, izip
 
 if len(sys.argv) < 4:
     print "usage: {0} [loss|accuracy|other metric] [epoch|time] logs...".format(sys.argv[0])
@@ -35,14 +35,20 @@ for arg in sys.argv[3:]:
         print 'empty'
         continue
 
-    dicts = eval(text.replace('nan', '-1.'))
+    dicts = eval(text.replace('nan', '-1'))
 
     color = colors.next()
     for setname, line in sets:
         name = "{0}_{1}".format(arg, setname)
         if metric == 'loss':
-            X = [d[xtype] for d in dicts]
-            Y = [convert(d['sets'][setname]['loss']) for d in dicts]
+            Xr = [d[xtype] for d in dicts]
+            Yr = [convert(d['sets'][setname]['loss']) for d in dicts]
+            X = []
+            Y = []
+            for x, y in izip(Xr, Yr):
+                if y >= 0:
+                    X.append(x)
+                    Y.append(y)
         else:
             tag = 'avg_correct_pct'
             for tag in ['avg_correct_pct', 'pct_correct_pct']:
